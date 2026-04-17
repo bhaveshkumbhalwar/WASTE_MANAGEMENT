@@ -17,7 +17,7 @@ export default function AuthPage() {
   const [loginPass, setLoginPass] = useState('');
   const [showPass, setShowPass] = useState(false);
 
-  // Signup fields
+  // Student Signup fields
   const [suName, setSuName] = useState('');
   const [suEmail, setSuEmail] = useState('');
   const [suDept, setSuDept] = useState('');
@@ -27,6 +27,7 @@ export default function AuthPage() {
   const handleRoleSelect = (role) => {
     setSelectedRole(role);
     setError('');
+    // Only students can sign up; others go to login
     if (role !== 'student') setActiveTab('login');
   };
 
@@ -47,7 +48,7 @@ export default function AuthPage() {
     }
   };
 
-  const handleSignup = async (e) => {
+  const handleStudentSignup = async (e) => {
     e.preventDefault();
     setError('');
     if (!suName || !suEmail || !suDept || !suPass || !suConfirm) {
@@ -82,7 +83,7 @@ export default function AuthPage() {
       <ThemeToggle className="login-theme-btn" />
 
       <div className="auth-page" id="auth-root">
-        {/* ══ Left Visual Panel ══ */}
+        {/* Left Visual Panel */}
         <div className="auth-visual">
           <div className="auth-bubbles" aria-hidden="true">
             <span className="auth-bubble"></span>
@@ -113,7 +114,7 @@ export default function AuthPage() {
           </div>
         </div>
 
-        {/* ══ Right Form Panel ══ */}
+        {/* Right Form Panel */}
         <div className="auth-form-panel">
           <div className="auth-form-box">
             {/* Role Selector */}
@@ -129,7 +130,7 @@ export default function AuthPage() {
               ))}
             </div>
 
-            {/* Tabs */}
+            {/* Tabs — Sign Up only for students */}
             <div className="auth-tabs" role="tablist">
               <button
                 className={`auth-tab ${activeTab === 'login' ? 'active' : ''}`}
@@ -147,7 +148,7 @@ export default function AuthPage() {
               )}
             </div>
 
-            {/* ════ SIGN IN ════ */}
+            {/* SIGN IN */}
             {activeTab === 'login' && (
               <div>
                 <h1 className="auth-title">Welcome Back 👋</h1>
@@ -160,29 +161,15 @@ export default function AuthPage() {
                     <label className="form-label">User ID</label>
                     <div className="input-icon-wrap">
                       <span className="input-icon">👤</span>
-                      <input
-                        className="form-input"
-                        type="text"
-                        placeholder="Enter your User ID"
-                        value={loginId}
-                        onChange={(e) => setLoginId(e.target.value)}
-                      />
+                      <input className="form-input" type="text" placeholder="Enter your User ID" value={loginId} onChange={(e) => setLoginId(e.target.value)} />
                     </div>
                   </div>
                   <div className="form-group">
                     <label className="form-label">Password</label>
                     <div className="input-icon-wrap">
                       <span className="input-icon">🔒</span>
-                      <input
-                        className="form-input"
-                        type={showPass ? 'text' : 'password'}
-                        placeholder="••••••••"
-                        value={loginPass}
-                        onChange={(e) => setLoginPass(e.target.value)}
-                      />
-                      <button type="button" className="pass-toggle" onClick={() => setShowPass(!showPass)}>
-                        👁️
-                      </button>
+                      <input className="form-input" type={showPass ? 'text' : 'password'} placeholder="••••••••" value={loginPass} onChange={(e) => setLoginPass(e.target.value)} />
+                      <button type="button" className="pass-toggle" onClick={() => setShowPass(!showPass)}>👁️</button>
                     </div>
                   </div>
                   <button type="submit" className="btn btn-primary btn-lg btn-full" disabled={loading}>
@@ -193,15 +180,19 @@ export default function AuthPage() {
                 {selectedRole === 'student' && (
                   <p className="auth-switch-text">
                     New to SustainX?{' '}
-                    <button onClick={() => { setActiveTab('signup'); setError(''); }}>
-                      Create an account →
-                    </button>
+                    <button onClick={() => { setActiveTab('signup'); setError(''); }}>Create an account →</button>
+                  </p>
+                )}
+
+                {selectedRole === 'collector' && (
+                  <p className="auth-switch-text" style={{ opacity: 0.7, fontSize: '.82rem' }}>
+                    Collector accounts are created by admin. Contact your administrator.
                   </p>
                 )}
               </div>
             )}
 
-            {/* ════ SIGN UP ════ */}
+            {/* STUDENT SIGN UP */}
             {activeTab === 'signup' && selectedRole === 'student' && (
               <div>
                 <h1 className="auth-title">Join SustainX 🌱</h1>
@@ -209,7 +200,7 @@ export default function AuthPage() {
 
                 {error && <div className="auth-error">{error}</div>}
 
-                <form onSubmit={handleSignup} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '.85rem' }}>
+                <form onSubmit={handleStudentSignup} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '.85rem' }}>
                   <div className="form-group">
                     <label className="form-label">Full Name</label>
                     <div className="input-icon-wrap">

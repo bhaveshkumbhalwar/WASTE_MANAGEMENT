@@ -31,27 +31,39 @@ const getUserById = async (req, res) => {
 // @route   POST /api/users
 const createUser = async (req, res) => {
   try {
-    const { userId, role, name, email, dept, password } = req.body;
+    const { userId, role, name, email, dept, block, password } = req.body;
 
     if (!userId || !name || !email || !password) {
-      return res.status(400).json({ message: 'Please fill all required fields' });
+      return res.status(400).json({ message: 'Please fill all required fields (userId, name, email, password)' });
     }
 
-    const existing = await User.findOne({
-      $or: [{ userId: userId.toUpperCase() }, { email: email.toLowerCase() }],
-    });
+    // Validate block for collectors — required
+    if (role === 'collector' && !block) {
+      return res.status(400).json({ message: 'Block (A–E) is required when creating a collector' });
+    }
+
+    // Only userId must be unique — email can be shared across collectors
+    const existing = await User.findOne({ userId: userId.toUpperCase() });
     if (existing) {
-      return res.status(400).json({ message: 'User ID or email already exists' });
+      return res.status(400).json({ message: `User ID "${userId.toUpperCase()}" already exists. Choose a different User ID.` });
     }
 
-    const user = await User.create({
+    const userData = {
       userId: userId.toUpperCase(),
       password,
       role: role || 'student',
       name,
       email: email.toLowerCase(),
       dept: dept || '',
-    });
+    };
+
+    // Add block for collector role (already validated above)
+    if (role === 'collector' && block) {
+      userData.block = block.toUpperCase();
+    }
+
+    const user = await User.create(userData);
+    console.log(`👤 [USERS] Created ${userData.role} | userId: ${userData.userId} | block: ${userData.block || 'N/A'} | email: ${userData.email}`);
 
     res.status(201).json(user.toJSON());
   } catch (err) {

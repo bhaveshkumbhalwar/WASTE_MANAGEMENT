@@ -55,9 +55,18 @@ export default function CollectorDashboard() {
 
   const loadDashboard = useCallback(async () => {
     try {
-      const res = await getComplaints();
-      let open = res.data.filter((c) => c.status !== 'completed');
-      if (dashFilter) open = open.filter((c) => c.status === dashFilter);
+      // Backend handles block filtering — frontend just displays what it gets
+      const res = await getComplaints(dashFilter ? { status: dashFilter } : {});
+
+      // Debug log: verify only correct block data is received
+      console.log(`📋 [COLLECTOR UI] Fetched ${res.data.length} complaint(s) | Block filter applied by backend`);
+      if (res.data.length > 0) {
+        const blocks = [...new Set(res.data.map(c => c.block))];
+        console.log(`📋 [COLLECTOR UI] Blocks in response: ${blocks.join(', ')}`);
+      }
+
+      // Only filter out completed for "All Open" tab (status filter, NOT block filter)
+      const open = dashFilter ? res.data : res.data.filter((c) => c.status !== 'completed');
       setOpenComplaints(open);
     } catch { /* ignore */ }
   }, [dashFilter]);
@@ -137,8 +146,14 @@ export default function CollectorDashboard() {
           {/* ── DASHBOARD ── */}
           {section === 'sec-dashboard' && (
             <section className="page-section active">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem', marginBottom: '1rem' }}>
+                <span className="badge badge-progress" style={{ fontSize: '.85rem', fontWeight: 700, padding: '.4rem .8rem' }}>
+                  🏢 Block {user.block || '—'}
+                </span>
+                <span style={{ fontSize: '.82rem', color: 'var(--txt-muted)' }}>Showing complaints for your block only</span>
+              </div>
               <div className="stat-grid mb-3">
-                <StatCard icon="📋" value={stats.total} label="Total Complaints" />
+                <StatCard icon="📋" value={stats.total} label="Block Complaints" />
                 <StatCard icon="⏳" value={stats.pending} label="Pending" />
                 <StatCard icon="🔄" value={stats.progress} label="In Progress" />
                 <StatCard icon="✅" value={stats.done} label="Completed" />
@@ -249,6 +264,7 @@ export default function CollectorDashboard() {
                   <p>{profile?.email}</p>
                   <div className="profile-meta">
                     <span className="profile-meta-tag">🚛 Collector</span>
+                    <span className="profile-meta-tag">🏢 Block {profile?.block || '—'}</span>
                     <span className="profile-meta-tag">ID: {profile?.userId || '—'}</span>
                   </div>
                 </div>

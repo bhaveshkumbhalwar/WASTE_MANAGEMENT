@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { loginUser, registerUser, getMe } from '../services/api';
 
 const AuthContext = createContext(null);
@@ -6,6 +6,9 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Session key — changes on every login, forces child components to remount
+  const [sessionKey, setSessionKey] = useState(0);
 
   // Check for existing token on mount
   useEffect(() => {
@@ -23,36 +26,43 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const login = async (userId, password, role) => {
+  const login = useCallback(async (userId, password, role) => {
     const res = await loginUser({ userId, password, role });
     localStorage.setItem('wms_token', res.data.token);
     setUser(res.data.user);
+    // Increment session key to force all dashboard components to remount with fresh state
+    setSessionKey((k) => k + 1);
+    console.log(`🔑 [AUTH] Logged in as ${res.data.user.userId} | role: ${res.data.user.role} | block: ${res.data.user.block || 'N/A'}`);
     return res.data.user;
-  };
+  }, []);
 
-  const register = async (data) => {
+  const register = useCallback(async (data) => {
     const res = await registerUser(data);
     localStorage.setItem('wms_token', res.data.token);
     setUser(res.data.user);
+    setSessionKey((k) => k + 1);
     return res.data.user;
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
+    console.log('🔓 [AUTH] Logging out — clearing all state');
     localStorage.removeItem('wms_token');
     setUser(null);
-  };
+    // Increment session key so next login gets completely fresh components
+    setSessionKey((k) => k + 1);
+  }, []);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       const res = await getMe();
       setUser(res.data.user);
     } catch {
       // ignore
     }
-  };
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser, sessionKey }}>
       {children}
     </AuthContext.Provider>
   );

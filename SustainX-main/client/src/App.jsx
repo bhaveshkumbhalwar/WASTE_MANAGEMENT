@@ -14,7 +14,7 @@ function ProtectedRoute({ children, allowedRole }) {
 }
 
 function App() {
-  const { user, loading } = useAuth();
+  const { user, loading, sessionKey } = useAuth();
 
   if (loading) return null;
 
@@ -29,7 +29,8 @@ function App() {
           path="/student"
           element={
             <ProtectedRoute allowedRole="student">
-              <StudentDashboard />
+              {/* sessionKey forces full remount — clears all stale state */}
+              <StudentDashboard key={`student-${sessionKey}`} />
             </ProtectedRoute>
           }
         />
@@ -37,7 +38,8 @@ function App() {
           path="/collector"
           element={
             <ProtectedRoute allowedRole="collector">
-              <CollectorDashboard />
+              {/* sessionKey forces full remount — clears all stale state */}
+              <CollectorDashboard key={`collector-${sessionKey}`} />
             </ProtectedRoute>
           }
         />
@@ -45,7 +47,7 @@ function App() {
           path="/admin"
           element={
             <ProtectedRoute allowedRole="admin">
-              <AdminDashboard />
+              <AdminDashboard key={`admin-${sessionKey}`} />
             </ProtectedRoute>
           }
         />

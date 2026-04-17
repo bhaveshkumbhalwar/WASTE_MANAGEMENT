@@ -12,6 +12,6 @@ const router = express.Router();
 router.get('/', protect, getComplaints);
 router.get('/:id', protect, getComplaintById);
 router.post('/', protect, authorize('student'), submitComplaint);
-router.put('/:id/status', protect, authorize('collector'), updateComplaintStatus);
+router.put('/:id/status', protect, authorize('collector', 'admin'), updateComplaintStatus);
 
 module.exports = router;

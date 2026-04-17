@@ -43,6 +43,16 @@ const complaintSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    block: {
+      type: String,
+      enum: ['A', 'B', 'C', 'D', 'E'],
+      required: true,
+      index: true,
+    },
+    assignedTo: {
+      type: String,
+      default: null,
+    },
     status: {
       type: String,
       enum: ['pending', 'in-progress', 'completed'],

@@ -21,7 +21,8 @@ import {
 
 const NAV_ITEMS = [
   { id: 'sec-dashboard', label: 'Dashboard', icon: '📊' },
-  { id: 'sec-users', label: 'Manage Users', icon: '👥' },
+  { id: 'sec-collectors', label: 'Manage Collectors', icon: '🚛' },
+  { id: 'sec-users', label: 'Manage Students', icon: '🎓' },
   { id: 'sec-rewards', label: 'Give Rewards', icon: '🏆' },
   { id: 'sec-profile', label: 'Profile', icon: '🔐' },
 ];
@@ -35,21 +36,31 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState({ total: 0, pending: 0, progress: 0, done: 0, students: 0, collectors: 0 });
   const [allComplaints, setAllComplaints] = useState([]);
 
-  // Users
-  const [users, setUsers] = useState([]);
-  const [userRoleFilter, setUserRoleFilter] = useState('');
-  const [createModalOpen, setCreateModalOpen] = useState(false);
+  // Users (students)
+  const [studentUsers, setStudentUsers] = useState([]);
+  const [createStudentModalOpen, setCreateStudentModalOpen] = useState(false);
+
+  // Collectors
+  const [collectors, setCollectors] = useState([]);
+  const [createCollectorModalOpen, setCreateCollectorModalOpen] = useState(false);
+
+  // View user modal
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [viewUserData, setViewUserData] = useState(null);
   const [viewUserComplaints, setViewUserComplaints] = useState([]);
 
-  // Create user form
-  const [cuId, setCuId] = useState('');
-  const [cuRole, setCuRole] = useState('student');
-  const [cuName, setCuName] = useState('');
-  const [cuEmail, setCuEmail] = useState('');
-  const [cuDept, setCuDept] = useState('');
-  const [cuPass, setCuPass] = useState('');
+  // Create Student form
+  const [csId, setCsId] = useState('');
+  const [csName, setCsName] = useState('');
+  const [csEmail, setCsEmail] = useState('');
+  const [csDept, setCsDept] = useState('');
+  const [csPass, setCsPass] = useState('');
+
+  // Create Collector form
+  const [ccName, setCcName] = useState('');
+  const [ccEmail, setCcEmail] = useState('');
+  const [ccBlock, setCcBlock] = useState('');
+  const [ccPass, setCcPass] = useState('');
 
   // Rewards
   const [students, setStudents] = useState([]);
@@ -65,6 +76,8 @@ export default function AdminDashboard() {
   const [apNew, setApNew] = useState('');
   const [apConfirm, setApConfirm] = useState('');
 
+  /* ════════════ Data Loaders ════════════ */
+
   const loadStats = useCallback(async () => {
     try {
       const res = await getDashboardStats();
@@ -79,12 +92,19 @@ export default function AdminDashboard() {
     } catch { /* ignore */ }
   }, []);
 
-  const loadUsers = useCallback(async () => {
+  const loadStudentUsers = useCallback(async () => {
     try {
-      const res = await getUsers(userRoleFilter || undefined);
-      setUsers(res.data.filter((u) => u.role !== 'admin'));
+      const res = await getUsers('student');
+      setStudentUsers(res.data);
     } catch { /* ignore */ }
-  }, [userRoleFilter]);
+  }, []);
+
+  const loadCollectors = useCallback(async () => {
+    try {
+      const res = await getUsers('collector');
+      setCollectors(res.data);
+    } catch { /* ignore */ }
+  }, []);
 
   const loadStudents = useCallback(async () => {
     try {
@@ -96,7 +116,6 @@ export default function AdminDashboard() {
   const loadAllRewards = useCallback(async () => {
     try {
       const res = await getRewards();
-      // enrich with user names
       const userRes = await getUsers();
       const userMap = {};
       userRes.data.forEach((u) => (userMap[u.userId] = u.name));
@@ -116,25 +135,65 @@ export default function AdminDashboard() {
   useEffect(() => {
     loadStats();
     loadComplaints();
-    loadUsers();
+    loadStudentUsers();
+    loadCollectors();
     loadStudents();
     loadAllRewards();
     loadProfile();
-  }, [loadStats, loadComplaints, loadUsers, loadStudents, loadAllRewards, loadProfile]);
+  }, [loadStats, loadComplaints, loadStudentUsers, loadCollectors, loadStudents, loadAllRewards, loadProfile]);
 
-  const handleCreateUser = async (e) => {
+  /* ════════════ Handlers ════════════ */
+
+  // Create Student
+  const handleCreateStudent = async (e) => {
     e.preventDefault();
-    if (!cuId || !cuName || !cuEmail || !cuPass) { showToast('Please fill all required fields.', 'warning'); return; }
+    if (!csId || !csName || !csEmail || !csPass) { showToast('Please fill all required fields.', 'warning'); return; }
     try {
-      await createUser({ userId: cuId.toUpperCase(), role: cuRole, name: cuName, email: cuEmail, dept: cuDept, password: cuPass });
-      showToast(`User ${cuName} created successfully! ✅`);
-      setCreateModalOpen(false);
-      setCuId(''); setCuRole('student'); setCuName(''); setCuEmail(''); setCuDept(''); setCuPass('');
-      loadUsers();
-      loadStats();
-      loadStudents();
+      await createUser({ userId: csId.toUpperCase(), role: 'student', name: csName, email: csEmail, dept: csDept, password: csPass });
+      showToast(`Student ${csName} created successfully! ✅`);
+      setCreateStudentModalOpen(false);
+      setCsId(''); setCsName(''); setCsEmail(''); setCsDept(''); setCsPass('');
+      loadStudentUsers(); loadStats(); loadStudents();
     } catch (err) {
       showToast(err.response?.data?.message || 'Error', 'error');
+    }
+  };
+
+  // Create Collector (Admin only — uses existing POST /api/users with role=collector)
+  const handleCreateCollector = async (e) => {
+    e.preventDefault();
+    if (!ccName || !ccEmail || !ccBlock || !ccPass) {
+      showToast('Please fill all fields including Block.', 'warning');
+      return;
+    }
+    if (!/^[^@]+@[^@]+\.[^@]+$/.test(ccEmail)) {
+      showToast('Please enter a valid email.', 'warning');
+      return;
+    }
+    if (ccPass.length < 6) {
+      showToast('Password must be at least 6 characters.', 'warning');
+      return;
+    }
+
+    // Auto-generate collector userId from name
+    const rawId = ccName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8);
+    const userId = 'COL' + rawId + Date.now().toString().slice(-3);
+
+    try {
+      await createUser({
+        userId,
+        role: 'collector',
+        name: ccName,
+        email: ccEmail,
+        block: ccBlock,
+        password: ccPass,
+      });
+      showToast(`Collector "${ccName}" created for Block ${ccBlock}! ✅`);
+      setCreateCollectorModalOpen(false);
+      setCcName(''); setCcEmail(''); setCcBlock(''); setCcPass('');
+      loadCollectors(); loadStats();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Error creating collector', 'error');
     }
   };
 
@@ -143,8 +202,7 @@ export default function AdminDashboard() {
     try {
       await deleteUserApi(userId);
       showToast(`User ${name} deleted.`, 'warning');
-      loadUsers();
-      loadStats();
+      loadStudentUsers(); loadCollectors(); loadStats();
     } catch (err) {
       showToast(err.response?.data?.message || 'Error', 'error');
     }
@@ -172,9 +230,7 @@ export default function AdminDashboard() {
       const stu = students.find((s) => s.userId === rewStudentId);
       showToast(`Awarded ${pts} pts to ${stu?.name || rewStudentId} for "${activity}" ✅`, 'success');
       setRewStudentId(''); setRewActivity('Waste Photo Complaint'); setRewCustom(''); setRewPoints('');
-      loadAllRewards();
-      loadStudents();
-      loadStats();
+      loadAllRewards(); loadStudents(); loadStats();
     } catch (err) {
       showToast(err.response?.data?.message || 'Error', 'error');
     }
@@ -218,16 +274,17 @@ export default function AdminDashboard() {
                 <div className="section-title"><div className="section-title-bar"></div><h2>All Complaints</h2></div>
                 <div className="table-wrap">
                   <table>
-                    <thead><tr><th>ID</th><th>Student</th><th>Location</th><th>Type</th><th>Date</th><th>Status</th></tr></thead>
+                    <thead><tr><th>ID</th><th>Student</th><th>Location</th><th>Block</th><th>Assigned To</th><th>Date</th><th>Status</th></tr></thead>
                     <tbody>
                       {allComplaints.length === 0 ? (
-                        <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--txt-muted)' }}>No complaints yet.</td></tr>
+                        <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--txt-muted)' }}>No complaints yet.</td></tr>
                       ) : allComplaints.map((c) => (
                         <tr key={c.complaintId}>
                           <td><strong style={{ color: 'var(--clr-blue)' }}>{c.complaintId}</strong></td>
                           <td>{c.studentId}</td>
                           <td>{c.location}</td>
-                          <td><span style={{ fontSize: '.8rem' }}>{c.wasteType}</span></td>
+                          <td><span className="badge badge-progress">🏢 {c.block || '—'}</span></td>
+                          <td>{c.assignedTo || <span style={{ color: 'var(--txt-muted)', fontSize: '.8rem' }}>Unassigned</span>}</td>
                           <td>{fmtDate(c.createdAt)}</td>
                           <td><StatusBadge status={c.status} /></td>
                         </tr>
@@ -239,45 +296,68 @@ export default function AdminDashboard() {
             </section>
           )}
 
-          {/* ── MANAGE USERS ── */}
+          {/* ── MANAGE COLLECTORS ── */}
+          {section === 'sec-collectors' && (
+            <section className="page-section active">
+              <div className="flex-between mb-3" style={{ flexWrap: 'wrap', gap: '1rem' }}>
+                <div className="section-title" style={{ margin: 0 }}><div className="section-title-bar"></div><h2>🚛 Manage Collectors</h2></div>
+                <button className="btn btn-primary" onClick={() => setCreateCollectorModalOpen(true)}>➕ Add Collector</button>
+              </div>
+
+              <div className="stat-grid mb-3">
+                <StatCard icon="🚛" value={collectors.length} label="Total Collectors" borderColor="var(--clr-green)" />
+                {['A','B','C','D','E'].map((b) => (
+                  <StatCard key={b} icon="🏢" value={collectors.filter((c) => c.block === b).length} label={`Block ${b}`} />
+                ))}
+              </div>
+
+              <div className="table-wrap">
+                <table>
+                  <thead><tr><th>User ID</th><th>Name</th><th>Email</th><th>Block</th><th>Created</th><th>Actions</th></tr></thead>
+                  <tbody>
+                    {collectors.length === 0 ? (
+                      <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--txt-muted)' }}>No collectors found. Add one using the button above.</td></tr>
+                    ) : collectors.map((c) => (
+                      <tr key={c.userId}>
+                        <td><strong>{c.userId}</strong></td>
+                        <td>{c.name}</td>
+                        <td style={{ fontSize: '.82rem' }}>{c.email}</td>
+                        <td><span className="badge badge-progress" style={{ fontWeight: 700 }}>🏢 Block {c.block || '—'}</span></td>
+                        <td style={{ fontSize: '.82rem' }}>{fmtDate(c.createdAt)}</td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '.4rem' }}>
+                            <button className="btn btn-ghost btn-sm" onClick={() => handleViewUser(c.userId)}>👁 View</button>
+                            <button className="btn btn-red btn-sm" onClick={() => handleDeleteUser(c.userId, c.name)}>🗑 Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+          {/* ── MANAGE STUDENTS ── */}
           {section === 'sec-users' && (
             <section className="page-section active">
               <div className="flex-between mb-3" style={{ flexWrap: 'wrap', gap: '1rem' }}>
-                <div className="section-title" style={{ margin: 0 }}><div className="section-title-bar"></div><h2>Manage Users</h2></div>
-                <button className="btn btn-primary" onClick={() => setCreateModalOpen(true)}>➕ Create User</button>
-              </div>
-              <div style={{ display: 'flex', gap: '.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                {[
-                  { label: 'All', role: '' },
-                  { label: '🎓 Students', role: 'student' },
-                  { label: '🚛 Collectors', role: 'collector' },
-                ].map((t) => (
-                  <button
-                    key={t.role}
-                    className={`btn btn-sm ${userRoleFilter === t.role ? 'btn-primary' : 'btn-ghost'}`}
-                    onClick={() => setUserRoleFilter(t.role)}
-                  >
-                    {t.label}
-                  </button>
-                ))}
+                <div className="section-title" style={{ margin: 0 }}><div className="section-title-bar"></div><h2>🎓 Manage Students</h2></div>
+                <button className="btn btn-primary" onClick={() => setCreateStudentModalOpen(true)}>➕ Create Student</button>
               </div>
               <div className="table-wrap">
                 <table>
-                  <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Department</th><th>Actions</th></tr></thead>
+                  <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Department</th><th>Reward Pts</th><th>Actions</th></tr></thead>
                   <tbody>
-                    {users.length === 0 ? (
-                      <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--txt-muted)' }}>No users found.</td></tr>
-                    ) : users.map((u) => (
+                    {studentUsers.length === 0 ? (
+                      <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--txt-muted)' }}>No students found.</td></tr>
+                    ) : studentUsers.map((u) => (
                       <tr key={u.userId}>
                         <td><strong>{u.userId}</strong></td>
                         <td>{u.name}</td>
                         <td style={{ fontSize: '.82rem' }}>{u.email}</td>
-                        <td>
-                          <span className={`badge ${u.role === 'student' ? 'badge-done' : 'badge-progress'}`}>
-                            {u.role === 'student' ? '🎓 Student' : '🚛 Collector'}
-                          </span>
-                        </td>
                         <td style={{ fontSize: '.82rem' }}>{u.dept || '—'}</td>
+                        <td><span className="reward-pts">🏆 {u.rewardPoints || 0}</span></td>
                         <td>
                           <div style={{ display: 'flex', gap: '.4rem' }}>
                             <button className="btn btn-ghost btn-sm" onClick={() => handleViewUser(u.userId)}>👁 View</button>
@@ -403,30 +483,55 @@ export default function AdminDashboard() {
         </div>
       </main>
 
-      {/* Create User Modal */}
-      <Modal isOpen={createModalOpen} onClose={() => setCreateModalOpen(false)} title="Create New User">
-        <form onSubmit={handleCreateUser} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '.85rem' }}>
-          <div className="grid-2">
-            <div className="form-group"><label className="form-label">User ID</label><input className="form-input" placeholder="e.g. STU2026001" value={cuId} onChange={(e) => setCuId(e.target.value)} /></div>
-            <div className="form-group"><label className="form-label">Role</label>
-              <select className="form-select" value={cuRole} onChange={(e) => setCuRole(e.target.value)}>
-                <option value="student">🎓 Student</option>
-                <option value="collector">🚛 Collector</option>
-              </select>
-            </div>
+      {/* ══ Create Collector Modal ══ */}
+      <Modal isOpen={createCollectorModalOpen} onClose={() => setCreateCollectorModalOpen(false)} title="Add New Collector">
+        <form onSubmit={handleCreateCollector} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '.85rem' }}>
+          <div className="form-group">
+            <label className="form-label">Full Name</label>
+            <input className="form-input" placeholder="Collector's full name" value={ccName} onChange={(e) => setCcName(e.target.value)} />
           </div>
-          <div className="form-group"><label className="form-label">Full Name</label><input className="form-input" placeholder="Full name" value={cuName} onChange={(e) => setCuName(e.target.value)} /></div>
-          <div className="form-group"><label className="form-label">Email</label><input className="form-input" type="email" placeholder="email@campus.edu" value={cuEmail} onChange={(e) => setCuEmail(e.target.value)} /></div>
-          <div className="form-group"><label className="form-label">Department</label><input className="form-input" placeholder="e.g. Computer Science" value={cuDept} onChange={(e) => setCuDept(e.target.value)} /></div>
-          <div className="form-group"><label className="form-label">Password</label><input className="form-input" type="password" placeholder="Initial password" value={cuPass} onChange={(e) => setCuPass(e.target.value)} /></div>
+          <div className="form-group">
+            <label className="form-label">College Email ID</label>
+            <input className="form-input" type="email" placeholder="email@campus.edu" value={ccEmail} onChange={(e) => setCcEmail(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Assigned Block</label>
+            <select className="form-select" value={ccBlock} onChange={(e) => setCcBlock(e.target.value)}>
+              <option value="">Select Block…</option>
+              <option value="A">Block A</option>
+              <option value="B">Block B</option>
+              <option value="C">Block C</option>
+              <option value="D">Block D</option>
+              <option value="E">Block E</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Password</label>
+            <input className="form-input" type="password" placeholder="Initial password (min 6 chars)" value={ccPass} onChange={(e) => setCcPass(e.target.value)} />
+          </div>
           <div className="flex-between" style={{ gap: '.7rem', marginTop: '.5rem' }}>
-            <button type="button" className="btn btn-ghost btn-full" onClick={() => setCreateModalOpen(false)}>Cancel</button>
-            <button type="submit" className="btn btn-primary btn-full">Create User</button>
+            <button type="button" className="btn btn-ghost btn-full" onClick={() => setCreateCollectorModalOpen(false)}>Cancel</button>
+            <button type="submit" className="btn btn-primary btn-full">Add Collector</button>
           </div>
         </form>
       </Modal>
 
-      {/* View User Modal */}
+      {/* ══ Create Student Modal ══ */}
+      <Modal isOpen={createStudentModalOpen} onClose={() => setCreateStudentModalOpen(false)} title="Create New Student">
+        <form onSubmit={handleCreateStudent} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '.85rem' }}>
+          <div className="form-group"><label className="form-label">User ID</label><input className="form-input" placeholder="e.g. STU2026001" value={csId} onChange={(e) => setCsId(e.target.value)} /></div>
+          <div className="form-group"><label className="form-label">Full Name</label><input className="form-input" placeholder="Full name" value={csName} onChange={(e) => setCsName(e.target.value)} /></div>
+          <div className="form-group"><label className="form-label">Email</label><input className="form-input" type="email" placeholder="email@campus.edu" value={csEmail} onChange={(e) => setCsEmail(e.target.value)} /></div>
+          <div className="form-group"><label className="form-label">Department</label><input className="form-input" placeholder="e.g. Computer Science" value={csDept} onChange={(e) => setCsDept(e.target.value)} /></div>
+          <div className="form-group"><label className="form-label">Password</label><input className="form-input" type="password" placeholder="Initial password" value={csPass} onChange={(e) => setCsPass(e.target.value)} /></div>
+          <div className="flex-between" style={{ gap: '.7rem', marginTop: '.5rem' }}>
+            <button type="button" className="btn btn-ghost btn-full" onClick={() => setCreateStudentModalOpen(false)}>Cancel</button>
+            <button type="submit" className="btn btn-primary btn-full">Create Student</button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ══ View User Modal ══ */}
       <Modal isOpen={viewModalOpen} onClose={() => setViewModalOpen(false)} title="User Profile">
         {viewUserData && (
           <>
@@ -439,7 +544,13 @@ export default function AdminDashboard() {
                 <p style={{ fontSize: '.85rem' }}>{viewUserData.email}</p>
                 <div className="profile-meta" style={{ marginTop: '.4rem' }}>
                   <span className="profile-meta-tag">{viewUserData.userId}</span>
-                  <span className="profile-meta-tag">{viewUserData.dept || 'No dept'}</span>
+                  <span className="profile-meta-tag">
+                    {viewUserData.role === 'collector' ? `🚛 Collector` : `🎓 Student`}
+                  </span>
+                  {viewUserData.role === 'collector' && viewUserData.block && (
+                    <span className="profile-meta-tag" style={{ color: 'var(--clr-blue)' }}>🏢 Block {viewUserData.block}</span>
+                  )}
+                  {viewUserData.dept && <span className="profile-meta-tag">{viewUserData.dept}</span>}
                   <span className="profile-meta-tag" style={{ color: 'var(--clr-amber)' }}>🏆 {viewUserData.rewardPoints || 0} pts</span>
                 </div>
               </div>

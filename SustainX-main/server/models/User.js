@@ -25,16 +25,32 @@ const userSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    // email is NOT unique — multiple collectors can share the same email.
+    // Login uses userId (which IS unique), not email.
     email: {
       type: String,
       required: true,
-      unique: true,
       lowercase: true,
       trim: true,
+      index: false, // explicitly no index — prevents accidental unique constraint
     },
     dept: {
       type: String,
       default: '',
+    },
+    // block is required for collectors, optional for others
+    block: {
+      type: String,
+      enum: ['A', 'B', 'C', 'D', 'E'],
+      default: null,
+      validate: {
+        validator: function (v) {
+          // If role is collector, block must be set
+          if (this.role === 'collector') return !!v;
+          return true;
+        },
+        message: 'Block is required for collectors',
+      },
     },
     avatar: {
       type: String,

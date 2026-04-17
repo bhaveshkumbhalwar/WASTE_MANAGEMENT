@@ -1,8 +1,17 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+// Generate JWT with id, role, and block embedded
+const generateToken = (user) => {
+  return jwt.sign(
+    {
+      id: user._id,
+      role: user.role,
+      block: user.block || null,
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: '7d' }
+  );
 };
 
 // @desc    Login user
@@ -34,7 +43,7 @@ const login = async (req, res) => {
     }
 
     res.json({
-      token: generateToken(user._id),
+      token: generateToken(user),
       user: user.toJSON(),
     });
   } catch (err) {
@@ -60,12 +69,10 @@ const register = async (req, res) => {
       .slice(0, 12);
     const userId = rawId || 'STU' + Date.now().toString().slice(-6);
 
-    // Check if user already exists
-    const existing = await User.findOne({
-      $or: [{ userId }, { email: email.toLowerCase() }],
-    });
-    if (existing) {
-      return res.status(400).json({ message: 'User ID or email already exists' });
+    // Check if userId already exists
+    const existingId = await User.findOne({ userId });
+    if (existingId) {
+      return res.status(400).json({ message: 'User ID already exists. Try a different email.' });
     }
 
     const user = await User.create({
@@ -78,7 +85,7 @@ const register = async (req, res) => {
     });
 
     res.status(201).json({
-      token: generateToken(user._id),
+      token: generateToken(user),
       user: user.toJSON(),
     });
   } catch (err) {

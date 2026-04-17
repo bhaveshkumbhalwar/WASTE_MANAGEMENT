@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-// Protect routes — verify JWT token
+// Protect routes — verify JWT token and attach full user to req.user
 const protect = async (req, res, next) => {
   let token;
 
@@ -18,10 +18,21 @@ const protect = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.id).select('-password');
-    if (!req.user) {
+
+    // Fetch fresh user from DB to ensure data is current (block might have changed)
+    const user = await User.findById(decoded.id).select('-password');
+    if (!user) {
       return res.status(401).json({ message: 'User not found' });
     }
+
+    // Attach user to request — this includes role, block, userId etc.
+    req.user = user;
+
+    // Debug: verify block is available (remove in production)
+    if (user.role === 'collector') {
+      console.log(`🔑 [AUTH] Collector ${user.userId} authenticated | block: ${JSON.stringify(user.block)}`);
+    }
+
     next();
   } catch (err) {
     return res.status(401).json({ message: 'Not authorized, token failed' });

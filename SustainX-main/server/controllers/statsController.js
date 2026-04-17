@@ -1,12 +1,34 @@
 const Complaint = require('../models/Complaint');
 const User = require('../models/User');
 
-// @desc    Get dashboard stats (dynamic aggregation)
+// @desc    Get dashboard stats (role-aware)
 // @route   GET /api/stats/dashboard
+//
+// Security:
+//   - admin:     global stats across all complaints + user counts
+//   - collector: stats scoped to their assigned block only
+//   - student:   stats scoped to their own complaints only
 const getDashboardStats = async (req, res) => {
   try {
+    // ── Build match filter based on role ──
+    const complaintMatch = {};
+    if (req.user.role === 'collector') {
+      if (!req.user.block) {
+        // No block = no complaints — return zeros
+        console.warn(`⚠️ [STATS] Collector ${req.user.userId} has NO block → zero stats`);
+        return res.json({ total: 0, pending: 0, progress: 0, done: 0, students: 0, collectors: 0 });
+      }
+      complaintMatch.block = req.user.block;
+    } else if (req.user.role === 'student') {
+      complaintMatch.studentId = req.user.userId;
+    }
+    // Admin: no filter — global stats
+
+    console.log(`📊 [STATS] User: ${req.user.userId} | Role: ${req.user.role} | Block: ${JSON.stringify(req.user.block)} | Match:`, JSON.stringify(complaintMatch));
+
     const [statusAgg, roleAgg] = await Promise.all([
       Complaint.aggregate([
+        { $match: complaintMatch },
         {
           $group: {
             _id: '$status',

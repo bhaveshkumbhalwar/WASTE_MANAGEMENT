@@ -33,6 +33,7 @@ const seedDB = async () => {
         name: 'Ravi Kumar',
         email: 'ravi.kumar@campus.edu',
         dept: 'Waste Management',
+        block: 'A',
         rewardPoints: 0,
       },
       {
@@ -55,6 +56,8 @@ const seedDB = async () => {
         location: 'Block A - Ground Floor',
         wasteType: 'Mixed Waste',
         description: 'Large pile of garbage near the entrance. Needs immediate attention.',
+        block: 'A',
+        assignedTo: 'TESTCOLLECTOR',
         status: 'completed',
         type: 'complaint',
         statusHistory: [
@@ -69,6 +72,8 @@ const seedDB = async () => {
         location: 'Cafeteria East Wing',
         wasteType: 'Food Waste',
         description: 'Overflow of food waste from cafeteria bins.',
+        block: 'A',
+        assignedTo: 'TESTCOLLECTOR',
         status: 'in-progress',
         type: 'complaint',
         statusHistory: [
@@ -82,10 +87,12 @@ const seedDB = async () => {
         location: 'Library 2nd Floor',
         wasteType: 'Paper Waste',
         description: 'Scattered paper waste near the photocopier station.',
+        block: 'B',
+        assignedTo: null,
         status: 'pending',
         type: 'complaint',
         statusHistory: [
-          { status: 'pending', note: 'Complaint submitted', updatedBy: 'TESTSTUD', timestamp: new Date('2026-03-15') },
+          { status: 'pending', note: 'Complaint submitted (no collector for Block B)', updatedBy: 'TESTSTUD', timestamp: new Date('2026-03-15') },
         ],
       },
     ]);

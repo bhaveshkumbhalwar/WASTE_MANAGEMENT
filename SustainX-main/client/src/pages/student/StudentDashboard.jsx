@@ -39,6 +39,7 @@ export default function StudentDashboard() {
   const [compLocation, setCompLocation] = useState('');
   const [compType, setCompType] = useState('');
   const [compDesc, setCompDesc] = useState('');
+  const [compBlock, setCompBlock] = useState('');
 
   // History
   const [complaints, setComplaints] = useState([]);
@@ -51,6 +52,7 @@ export default function StudentDashboard() {
 
   // Scan
   const [scanLocation, setScanLocation] = useState('');
+  const [scanBlock, setScanBlock] = useState('');
 
   // Rewards
   const [rewards, setRewards] = useState([]);
@@ -106,14 +108,14 @@ export default function StudentDashboard() {
 
   const handleComplaint = async (e) => {
     e.preventDefault();
-    if (!compLocation || !compType || !compDesc) {
-      showToast('Please fill all fields.', 'warning');
+    if (!compLocation || !compType || !compDesc || !compBlock) {
+      showToast('Please fill all fields including Block.', 'warning');
       return;
     }
     try {
-      const res = await submitComplaint({ location: compLocation, wasteType: compType, description: compDesc });
+      const res = await submitComplaint({ location: compLocation, wasteType: compType, description: compDesc, block: compBlock });
       showToast(`Complaint ${res.data.complaintId} submitted! ✅`);
-      setCompLocation(''); setCompType(''); setCompDesc('');
+      setCompLocation(''); setCompType(''); setCompDesc(''); setCompBlock('');
       loadProfile(); loadHistory();
     } catch (err) {
       showToast(err.response?.data?.message || 'Error submitting', 'error');
@@ -122,15 +124,16 @@ export default function StudentDashboard() {
 
   const handleScan = async (e) => {
     e.preventDefault();
-    if (!scanLocation) { showToast('Please enter the dustbin location.', 'warning'); return; }
+    if (!scanLocation || !scanBlock) { showToast('Please enter location and select block.', 'warning'); return; }
     try {
       const res = await submitComplaint({
         location: scanLocation, wasteType: 'Dustbin Overflow',
         description: 'Dustbin full alert via Quick Scan.', type: 'scan',
+        block: scanBlock,
       });
       await addReward({ studentId: user.userId, activity: 'Dustbin Full Alert (Scan)', points: 30 });
       showToast(`Alert sent! ${res.data.complaintId} — +30 pts earned 🏆`, 'success');
-      setScanLocation('');
+      setScanLocation(''); setScanBlock('');
       loadProfile(); loadRewards();
     } catch (err) {
       showToast(err.response?.data?.message || 'Error', 'error');
@@ -230,6 +233,19 @@ export default function StudentDashboard() {
                       <label className="form-label">Location</label>
                       <input className="form-input" type="text" placeholder="e.g. Block A Ground Floor" value={compLocation} onChange={(e) => setCompLocation(e.target.value)} />
                     </div>
+                    <div className="form-group">
+                      <label className="form-label">Block</label>
+                      <select className="form-select" value={compBlock} onChange={(e) => setCompBlock(e.target.value)}>
+                        <option value="">Select Block…</option>
+                        <option value="A">Block A</option>
+                        <option value="B">Block B</option>
+                        <option value="C">Block C</option>
+                        <option value="D">Block D</option>
+                        <option value="E">Block E</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid-2">
                     <div className="form-group">
                       <label className="form-label">Waste Type</label>
                       <select className="form-select" value={compType} onChange={(e) => setCompType(e.target.value)}>
@@ -350,6 +366,17 @@ export default function StudentDashboard() {
                   <div className="form-group">
                     <label className="form-label">Dustbin Location</label>
                     <input className="form-input" type="text" placeholder="e.g. Canteen Entrance Gate 3" value={scanLocation} onChange={(e) => setScanLocation(e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Block</label>
+                    <select className="form-select" value={scanBlock} onChange={(e) => setScanBlock(e.target.value)}>
+                      <option value="">Select Block…</option>
+                      <option value="A">Block A</option>
+                      <option value="B">Block B</option>
+                      <option value="C">Block C</option>
+                      <option value="D">Block D</option>
+                      <option value="E">Block E</option>
+                    </select>
                   </div>
                   <button type="submit" className="btn btn-amber btn-lg">🚨 Send Dustbin Alert</button>
                 </form>
