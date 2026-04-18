@@ -170,6 +170,8 @@ const updateOrderStatus = async (req, res) => {
     }
 
     const order = await Order.findOne({ orderId: req.params.id.toUpperCase() });
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
     // ── Strict Status Transition Validation ──
     const validTransitions = {
       pending: ['approved'],

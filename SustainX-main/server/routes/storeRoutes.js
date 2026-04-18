@@ -14,7 +14,7 @@ router.get('/', protect, getStoreItems);
 // Admin can create items
 router.post('/', protect, authorize('admin'), createStoreItem);
 
-// Student can redeem
-router.post('/redeem', protect, authorize('student'), redeemItem);
+// Student/Collector can redeem
+router.post('/redeem', protect, authorize('student', 'collector'), redeemItem);
 
 module.exports = router;

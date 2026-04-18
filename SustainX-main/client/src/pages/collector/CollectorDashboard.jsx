@@ -13,6 +13,9 @@ import {
   getDashboardStats,
   changePassword,
   getUserById,
+  getRewards,
+  getStoreItems,
+  redeemStoreItem,
   getOrders,
   updateOrderStatus,
 } from '../../services/api';
@@ -147,6 +150,20 @@ export default function CollectorDashboard() {
     loadRewardHistory();
   }, [loadStats, loadDashboard, loadHistory, loadProfile, loadStoreOrders, loadStoreItems, loadMyOrders, loadRewardHistory]);
 
+  const handleRedeem = async (itemId) => {
+    try {
+      const res = await redeemStoreItem(itemId);
+      showToast(`Item redeemed! Order ${res.data.order.orderId} created. Remaining: ${res.data.remainingPoints} pts ✅`);
+      loadStoreItems();
+      loadMyOrders();
+      loadProfile();
+      loadRewardHistory();
+      loadStoreOrders(); // Refresh manager view too
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Error redeeming item', 'error');
+    }
+  };
+
   // Polling every 10 seconds
   useEffect(() => {
     const interval = setInterval(() => {
@@ -199,18 +216,6 @@ export default function CollectorDashboard() {
       loadProfile(); // Refresh points
     } catch (err) {
       showToast(err.response?.data?.message || 'Error updating order', 'error');
-    }
-  };
-
-  const handleRedeem = async (itemId) => {
-    try {
-      const res = await redeemStoreItem(itemId);
-      showToast(`Success! Order ${res.data.order.orderId} created.`, 'success');
-      loadProfile();
-      loadMyOrders();
-      loadRewardHistory();
-    } catch (err) {
-      showToast(err.response?.data?.message || 'Redemption failed', 'error');
     }
   };
 
@@ -383,7 +388,7 @@ export default function CollectorDashboard() {
                             <button className="btn btn-sm btn-blue" onClick={() => handleOrderStatus(o.orderId, 'approved')}>👍 Approve</button>
                           )}
                           {o.status === 'approved' && (
-                            <button className="btn btn-sm btn-amber" onClick={() => handleOrderStatus(o.orderId, 'ready_for_pickup')}>🎁 Ready</button>
+                            <button className="btn btn-sm btn-amber" onClick={() => handleOrderStatus(o.orderId, 'ready_for_pickup')}>🎁 Ready for Pickup</button>
                           )}
                           {o.status === 'ready_for_pickup' && (
                             <button className="btn btn-sm btn-primary" onClick={() => handleOrderStatus(o.orderId, 'delivered')}>🚚 Delivered</button>
