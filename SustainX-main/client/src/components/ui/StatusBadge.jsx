@@ -3,6 +3,8 @@ export default function StatusBadge({ status }) {
     pending: ['badge-pending', 'dot-pending', '⏳ Pending'],
     'in-progress': ['badge-progress', 'dot-progress', '🔄 In Progress'],
     completed: ['badge-done', 'dot-done', '✅ Completed'],
+    rejected: ['badge-rejected', 'dot-rejected', '❌ Rejected'],
+    ready: ['badge-ready', 'dot-ready', '🎁 Ready'],
   };
   const [cls, dot, label] = map[status] || ['badge-pending', 'dot-pending', status];
   return (

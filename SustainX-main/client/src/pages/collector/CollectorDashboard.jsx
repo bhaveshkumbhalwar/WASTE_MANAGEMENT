@@ -19,8 +19,10 @@ import {
 
 const NAV_ITEMS = [
   { id: 'sec-dashboard', label: 'Dashboard', icon: '📊' },
+  { id: 'sec-store-orders', label: 'Manage Orders', icon: '📦' },
   { id: 'sec-history', label: 'History', icon: '✅' },
-  { id: 'sec-store-orders', label: 'Store Orders', icon: '📦' },
+  { id: 'sec-store', label: 'Eco Store', icon: '🛒' },
+  { id: 'sec-my-orders', label: 'My Redemptions', icon: '🎁' },
   { id: 'sec-awareness', label: 'Awareness', icon: '🌱' },
   { id: 'sec-profile', label: 'Profile', icon: '👤' },
 ];
@@ -46,6 +48,7 @@ export default function CollectorDashboard() {
   const [activeId, setActiveId] = useState('');
   const [modalStatus, setModalStatus] = useState('in-progress');
   const [selectedComplaint, setSelectedComplaint] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   // Profile
   const [profile, setProfile] = useState(null);
@@ -53,7 +56,13 @@ export default function CollectorDashboard() {
   const [cpNew, setCpNew] = useState('');
   const [cpConfirm, setCpConfirm] = useState('');
 
-  // Store orders
+  // Store & Rewards
+  const [storeItems, setStoreItems] = useState([]);
+  const [myOrders, setMyOrders] = useState([]);
+  const [rewardHistory, setRewardHistory] = useState([]);
+  const [rewardTotal, setRewardTotal] = useState(0);
+
+  // Store orders (to manage)
   const [storeOrders, setStoreOrders] = useState([]);
   const [orderFilter, setOrderFilter] = useState('');
 
@@ -77,7 +86,7 @@ export default function CollectorDashboard() {
       }
 
       // Only filter out completed for "All Open" tab (status filter, NOT block filter)
-      const open = dashFilter ? res.data : res.data.filter((c) => c.status !== 'completed');
+      const open = dashFilter ? res.data : res.data.filter((c) => c.status !== 'completed' && c.status !== 'rejected');
       setOpenComplaints(open);
     } catch { /* ignore */ }
   }, [dashFilter]);
@@ -93,6 +102,28 @@ export default function CollectorDashboard() {
     try {
       const res = await getUserById(user.userId);
       setProfile(res.data);
+      setRewardTotal(res.data.rewardPoints || 0);
+    } catch { /* ignore */ }
+  }, [user.userId]);
+
+  const loadStoreItems = useCallback(async () => {
+    try {
+      const res = await getStoreItems();
+      setStoreItems(res.data);
+    } catch { /* ignore */ }
+  }, []);
+
+  const loadMyOrders = useCallback(async () => {
+    try {
+      const res = await getOrders({ userId: user.userId });
+      setMyOrders(res.data);
+    } catch { /* ignore */ }
+  }, [user.userId]);
+
+  const loadRewardHistory = useCallback(async () => {
+    try {
+      const res = await getRewards({ userId: user.userId });
+      setRewardHistory(res.data);
     } catch { /* ignore */ }
   }, [user.userId]);
 
@@ -111,7 +142,10 @@ export default function CollectorDashboard() {
     loadHistory();
     loadProfile();
     loadStoreOrders();
-  }, [loadStats, loadDashboard, loadHistory, loadProfile, loadStoreOrders]);
+    loadStoreItems();
+    loadMyOrders();
+    loadRewardHistory();
+  }, [loadStats, loadDashboard, loadHistory, loadProfile, loadStoreOrders, loadStoreItems, loadMyOrders, loadRewardHistory]);
 
   // Polling every 10 seconds
   useEffect(() => {
@@ -123,13 +157,29 @@ export default function CollectorDashboard() {
   }, [loadStats, loadDashboard]);
 
   const handleUpdateStatus = async () => {
+    if (modalStatus === 'rejected' && !rejectionReason.trim()) {
+      showToast('Please provide a reason for rejection.', 'warning');
+      return;
+    }
     try {
-      await updateComplaintStatus(activeId, { status: modalStatus, note: `Status updated to ${modalStatus}` });
+      const body = { status: modalStatus, note: `Status updated to ${modalStatus}` };
+      if (modalStatus === 'rejected') {
+        body.rejectionReason = rejectionReason.trim();
+      }
+      const res = await updateComplaintStatus(activeId, body);
       showToast(`Complaint ${activeId} marked as "${modalStatus}" ✅`);
+      
+      // If completed, show reward message
+      if (modalStatus === 'completed' && res.data.rewardGiven) {
+        showToast('🎉 You earned 10 reward points!', 'info');
+      }
+
       setModalOpen(false);
+      setRejectionReason('');
       loadDashboard();
       loadHistory();
       loadStats();
+      loadProfile();
     } catch (err) {
       showToast(err.response?.data?.message || 'Error', 'error');
     }
@@ -137,11 +187,30 @@ export default function CollectorDashboard() {
 
   const handleOrderStatus = async (orderId, newStatus) => {
     try {
-      await updateOrderStatus(orderId, { status: newStatus });
+      const res = await updateOrderStatus(orderId, { status: newStatus });
       showToast(`Order ${orderId} → ${newStatus} ✅`);
+      
+      // If delivered, show reward message
+      if (newStatus === 'delivered' && res.data.rewardGiven) {
+        showToast('🚚 Delivery bonus: +20 reward points!', 'info');
+      }
+
       loadStoreOrders();
+      loadProfile(); // Refresh points
     } catch (err) {
       showToast(err.response?.data?.message || 'Error updating order', 'error');
+    }
+  };
+
+  const handleRedeem = async (itemId) => {
+    try {
+      const res = await redeemStoreItem(itemId);
+      showToast(`Success! Order ${res.data.order.orderId} created.`, 'success');
+      loadProfile();
+      loadMyOrders();
+      loadRewardHistory();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Redemption failed', 'error');
     }
   };
 
@@ -165,6 +234,7 @@ export default function CollectorDashboard() {
     { label: 'All Open', filter: '' },
     { label: '⏳ Pending', filter: 'pending' },
     { label: '🔄 In Progress', filter: 'in-progress' },
+    { label: '❌ Rejected', filter: 'rejected' },
   ];
 
   return (
@@ -195,7 +265,7 @@ export default function CollectorDashboard() {
                 <StatCard icon="📋" value={stats.total} label="Block Complaints" />
                 <StatCard icon="⏳" value={stats.pending} label="Pending" />
                 <StatCard icon="🔄" value={stats.progress} label="In Progress" />
-                <StatCard icon="✅" value={stats.done} label="Completed" />
+                <StatCard icon="⭐" value={rewardTotal} label="Your Points" color="var(--clr-amber)" />
               </div>
 
               <div style={{ display: 'flex', gap: '.5rem', marginBottom: '1.2rem', flexWrap: 'wrap' }}>
@@ -307,22 +377,132 @@ export default function CollectorDashboard() {
                         <td>{o.itemName}</td>
                         <td><span style={{ fontWeight: 600, color: 'var(--clr-amber)' }}>⭐ {o.pointsSpent}</span></td>
                         <td>{fmtDate(o.createdAt)}</td>
-                        <td><StatusBadge status={o.status === 'approved' ? 'in-progress' : o.status === 'delivered' ? 'completed' : 'pending'} /></td>
+                        <td><StatusBadge status={o.status === 'ready_for_pickup' ? 'ready' : o.status === 'approved' ? 'in-progress' : o.status === 'delivered' ? 'completed' : 'pending'} /></td>
                         <td>
                           {o.status === 'pending' && (
                             <button className="btn btn-sm btn-blue" onClick={() => handleOrderStatus(o.orderId, 'approved')}>👍 Approve</button>
                           )}
                           {o.status === 'approved' && (
-                            <button className="btn btn-sm btn-primary" onClick={() => handleOrderStatus(o.orderId, 'delivered')}>🚚 Deliver</button>
+                            <button className="btn btn-sm btn-amber" onClick={() => handleOrderStatus(o.orderId, 'ready_for_pickup')}>🎁 Ready</button>
+                          )}
+                          {o.status === 'ready_for_pickup' && (
+                            <button className="btn btn-sm btn-primary" onClick={() => handleOrderStatus(o.orderId, 'delivered')}>🚚 Delivered</button>
                           )}
                           {o.status === 'delivered' && (
-                            <span className="text-muted" style={{ fontSize: '.8rem' }}>Done</span>
+                            <span className="text-muted" style={{ fontSize: '.8rem' }}>Claimed</span>
                           )}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </section>
+          )}
+
+          {/* ── ECO STORE ── */}
+          {section === 'sec-store' && (
+            <section className="page-section active">
+              <div className="section-title"><div className="section-title-bar"></div><h2>🛒 Eco Store</h2></div>
+              <p style={{ marginBottom: '1.2rem', color: 'var(--txt-muted)', fontSize: '.9rem' }}>
+                Redeem your hard-earned reward points for eco-friendly products! You have <strong style={{ color: 'var(--clr-green)' }}>{rewardTotal} pts</strong>.
+              </p>
+              <div className="grid-3" style={{ gap: '1rem' }}>
+                {storeItems.length === 0 ? (
+                  <div className="card" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '2rem' }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '.7rem' }}>🏪</div>
+                    <h3>Store is empty</h3>
+                    <p className="text-muted">No items available yet. Check back soon!</p>
+                  </div>
+                ) : storeItems.map((item) => (
+                  <div className="store-card" key={item._id}>
+                    <div className="store-card-img">
+                      <img 
+                        src={item.image ? (item.image.startsWith('http') ? item.image : `/uploads/${item.image}`) : "/placeholder.png"} 
+                        alt={item.name}
+                        onError={(e) => { e.target.onerror = null; e.target.src = "/placeholder.png"; }}
+                      />
+                      <span className="store-eco-badge">♻️ Eco-friendly</span>
+                    </div>
+                    <div className="store-card-body">
+                      <div className="store-card-name">{item.name}</div>
+                      <span className="store-category-tag">{item.category || 'other'}</span>
+                      <div className="store-card-desc">{item.description}</div>
+                      <div className="store-card-footer">
+                        <div className="store-card-points">⭐ {item.pointsRequired} pts</div>
+                        <span className="text-muted" style={{ fontSize: '.75rem' }}>{item.stock > 0 ? `${item.stock} left` : 'Out of stock'}</span>
+                      </div>
+                      <button
+                        className={`btn btn-sm btn-full ${rewardTotal >= item.pointsRequired && item.stock > 0 ? 'btn-primary' : 'btn-ghost'}`}
+                        disabled={rewardTotal < item.pointsRequired || item.stock <= 0}
+                        onClick={() => handleRedeem(item._id)}
+                        style={{ marginTop: '.6rem' }}
+                      >
+                        {item.stock <= 0 ? '❌ Out of Stock' : rewardTotal < item.pointsRequired ? `🔒 Need ${item.pointsRequired - rewardTotal} pts` : '🛒 Redeem'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* ── MY REDEMPTIONS ── */}
+          {section === 'sec-my-orders' && (
+            <section className="page-section active">
+              <div className="section-title"><div className="section-title-bar"></div><h2>🎁 My Redemptions & Reward History</h2></div>
+              
+              <div className="stat-grid mb-3">
+                <StatCard icon="⭐" value={rewardTotal} label="Available Points" color="var(--clr-amber)" />
+                <StatCard icon="🛒" value={myOrders.length} label="Total Redemptions" />
+                <StatCard icon="🎁" value={myOrders.filter(o => o.status === 'ready_for_pickup').length} label="Ready for Pickup" />
+              </div>
+
+              <div className="grid-2 mb-3">
+                <div className="card">
+                  <div className="section-title"><div className="section-title-bar"></div><h3>Recent Points Earned</h3></div>
+                  <div className="table-wrap">
+                    <table style={{ fontSize: '.85rem' }}>
+                      <thead><tr><th>Activity</th><th>Points</th><th>Date</th></tr></thead>
+                      <tbody>
+                        {rewardHistory.length === 0 ? (
+                          <tr><td colSpan="3" style={{ textAlign: 'center', padding: '1rem' }}>No rewards yet.</td></tr>
+                        ) : rewardHistory.slice(0, 10).map((r, i) => (
+                          <tr key={i}>
+                            <td>{r.activity}</td>
+                            <td style={{ color: 'var(--clr-green)', fontWeight: 700 }}>+{r.points}</td>
+                            <td>{fmtDate(r.date)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="order-list-vertical">
+                  <div className="section-title"><div className="section-title-bar"></div><h3>My Redemption Orders</h3></div>
+                  {myOrders.length === 0 ? (
+                    <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
+                      <p className="text-muted">No items redeemed yet.</p>
+                    </div>
+                  ) : myOrders.map((o) => (
+                    <div className="card order-tracking-card mb-2" key={o.orderId} style={{ padding: '1rem' }}>
+                      <div className="flex-between">
+                        <strong style={{ color: 'var(--clr-blue)' }}>{o.orderId}</strong>
+                        <span className="text-muted" style={{ fontSize: '.75rem' }}>{fmtDate(o.createdAt)}</span>
+                      </div>
+                      <div style={{ fontWeight: 600, margin: '.3rem 0' }}>{o.itemName}</div>
+                      <div className="order-pickup-info" style={{ gap: '.5rem', fontSize: '.8rem', background: 'none', padding: 0 }}>
+                        <div className="info-row"><span>📍</span> {o.pickupLocation || 'Admin Office'}</div>
+                        <div className="info-row"><span>🕒</span> {o.pickupTime || '10 AM - 5 PM'}</div>
+                        {o.pickupCode && <div className="info-row"><span>🔐</span> <strong>{o.pickupCode}</strong></div>}
+                      </div>
+                      <div style={{ marginTop: '.5rem' }}>
+                        <StatusBadge status={o.status === 'ready_for_pickup' ? 'ready' : o.status === 'approved' ? 'in-progress' : o.status === 'delivered' ? 'completed' : 'pending'} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </section>
           )}
@@ -363,7 +543,7 @@ export default function CollectorDashboard() {
                   <div className="profile-meta">
                     <span className="profile-meta-tag">🚛 Collector</span>
                     <span className="profile-meta-tag">🏢 Block {profile?.block || '—'}</span>
-                    <span className="profile-meta-tag">ID: {profile?.userId || '—'}</span>
+                    <span className="profile-meta-tag">⭐ {rewardTotal} Reward Points</span>
                   </div>
                 </div>
               </div>
@@ -382,32 +562,102 @@ export default function CollectorDashboard() {
         </div>
       </main>
 
-      {/* Update Status Modal */}
-      <Modal id="update-modal" isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Update Complaint Status">
-        <p style={{ marginBottom: '1rem', fontSize: '.88rem', color: 'var(--txt-muted)' }}>
-          ID: <strong>{activeId}</strong>
-        </p>
-        {selectedComplaint?.image ? (
-          <div className="modal-image-wrap" style={{ marginBottom: '1rem' }}>
-            <img
-              src={`/uploads/${selectedComplaint.image}`}
-              alt="Complaint evidence"
-              style={{ width: '100%', maxHeight: '280px', objectFit: 'contain', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-card)' }}
-            />
-          </div>
-        ) : (
-          <div style={{ marginBottom: '1rem', padding: '1.2rem', borderRadius: '8px', background: 'var(--bg-muted, rgba(0,0,0,.04))', textAlign: 'center', color: 'var(--txt-muted)', fontSize: '.85rem' }}>
-            🖼️ No image provided
+      {/* Complaint Detail + Status Modal */}
+      <Modal id="update-modal" isOpen={modalOpen} onClose={() => { setModalOpen(false); setRejectionReason(''); }} title="📋 Complaint Details">
+        {selectedComplaint && (
+          <div style={{ marginBottom: '1rem' }}>
+            {/* Complaint Image */}
+            {selectedComplaint.image ? (
+              <div style={{ marginBottom: '1rem' }}>
+                <img
+                  src={`/uploads/${selectedComplaint.image}`}
+                  alt="Complaint evidence"
+                  style={{ width: '100%', maxHeight: '280px', objectFit: 'contain', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-card)' }}
+                />
+              </div>
+            ) : (
+              <div style={{ marginBottom: '1rem', padding: '1.2rem', borderRadius: '8px', background: 'var(--bg-muted, rgba(0,0,0,.04))', textAlign: 'center', color: 'var(--txt-muted)', fontSize: '.85rem' }}>
+                🖼️ No image provided
+              </div>
+            )}
+
+            {/* Complaint Details Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.8rem', marginBottom: '1rem', fontSize: '.88rem' }}>
+              <div>
+                <div className="info-label">📋 Complaint ID</div>
+                <div style={{ fontWeight: 700, color: 'var(--clr-blue)' }}>{selectedComplaint.complaintId}</div>
+              </div>
+              <div>
+                <div className="info-label">🏢 Block</div>
+                <div style={{ fontWeight: 700 }}>Block {selectedComplaint.block}</div>
+              </div>
+              <div>
+                <div className="info-label">📍 Location</div>
+                <div style={{ fontWeight: 600 }}>{selectedComplaint.location}</div>
+              </div>
+              <div>
+                <div className="info-label">🗑️ Waste Type</div>
+                <div style={{ fontWeight: 600 }}>{selectedComplaint.wasteType}</div>
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <div className="info-label">📝 Description</div>
+                <div style={{ fontWeight: 500, lineHeight: 1.5 }}>{selectedComplaint.description}</div>
+              </div>
+              <div>
+                <div className="info-label">📅 Date</div>
+                <div>{fmtDate(selectedComplaint.createdAt)}</div>
+              </div>
+              <div>
+                <div className="info-label">📌 Current Status</div>
+                <StatusBadge status={selectedComplaint.status} />
+              </div>
+            </div>
+
+            {/* Rejection reason display if already rejected */}
+            {selectedComplaint.status === 'rejected' && selectedComplaint.rejectionReason && (
+              <div style={{ padding: '.8rem 1rem', borderRadius: '8px', background: 'rgba(235,76,76,.08)', border: '1px solid rgba(235,76,76,.2)', marginBottom: '1rem' }}>
+                <div style={{ fontSize: '.75rem', fontWeight: 700, color: 'var(--clr-red)', textTransform: 'uppercase', marginBottom: '.3rem' }}>❌ Rejection Reason</div>
+                <div style={{ fontSize: '.88rem' }}>{selectedComplaint.rejectionReason}</div>
+              </div>
+            )}
           </div>
         )}
-        <div className="form-group mb-2">
-          <label className="form-label">New Status</label>
-          <select className="form-select" value={modalStatus} onChange={(e) => setModalStatus(e.target.value)}>
-            <option value="in-progress">🔄 In Progress</option>
-            <option value="completed">✅ Completed</option>
-          </select>
-        </div>
-        <button className="btn btn-primary btn-full" onClick={handleUpdateStatus}>Save Status</button>
+
+        {/* Status update form — only if NOT already completed/rejected */}
+        {selectedComplaint && !['completed', 'rejected'].includes(selectedComplaint.status) && (
+          <>
+            <div style={{ borderBottom: '2px dashed var(--border)', margin: '.8rem 0' }}></div>
+            <div className="form-group mb-2">
+              <label className="form-label">Update Status</label>
+              <select className="form-select" value={modalStatus} onChange={(e) => setModalStatus(e.target.value)}>
+                <option value="in-progress">🔄 In Progress</option>
+                <option value="completed">✅ Completed</option>
+                <option value="rejected">❌ Rejected</option>
+              </select>
+            </div>
+
+            {modalStatus === 'rejected' && (
+              <div className="form-group mb-2">
+                <label className="form-label">Rejection Reason <span style={{ color: 'var(--clr-red)' }}>*</span></label>
+                <textarea
+                  className="form-input"
+                  rows="3"
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="e.g., Duplicate complaint, area already cleaned, invalid location..."
+                  style={{ resize: 'vertical', minHeight: '80px' }}
+                />
+              </div>
+            )}
+
+            <button
+              className={`btn btn-full ${modalStatus === 'rejected' ? 'btn-red' : 'btn-primary'}`}
+              onClick={handleUpdateStatus}
+            >
+              {modalStatus === 'rejected' ? '❌ Reject Complaint' : '✅ Save Status'}
+            </button>
+          </>
+        )}
       </Modal>
     </div>
   );

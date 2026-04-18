@@ -5,6 +5,7 @@ import Sidebar from '../../components/layout/Sidebar';
 import Topbar from '../../components/layout/Topbar';
 import StatusBadge from '../../components/ui/StatusBadge';
 import StatCard from '../../components/ui/StatCard';
+import Modal from '../../components/ui/Modal';
 import { fmtDate, getInitials } from '../../utils/helpers';
 import {
   getComplaints,
@@ -79,6 +80,10 @@ export default function StudentDashboard() {
   // Store
   const [storeItems, setStoreItems] = useState([]);
   const [myOrders, setMyOrders] = useState([]);
+
+  // Receipt Modal
+  const [receiptOrder, setReceiptOrder] = useState(null);
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -414,20 +419,39 @@ export default function StudentDashboard() {
                     <strong>Location:</strong> {trackResult.location} &nbsp;·&nbsp;
                     <strong>Date:</strong> {fmtDate(trackResult.createdAt)}
                   </p>
+
+                  {/* Rejection Reason Alert */}
+                  {trackResult.status === 'rejected' && (
+                    <div style={{ padding: '.8rem 1rem', borderRadius: '8px', background: 'rgba(235,76,76,.08)', border: '1px solid rgba(235,76,76,.2)', marginBottom: '1.5rem' }}>
+                      <div style={{ fontSize: '.75rem', fontWeight: 700, color: 'var(--clr-red)', textTransform: 'uppercase', marginBottom: '.3rem' }}>❌ Rejection Reason</div>
+                      <div style={{ fontSize: '.88rem', color: 'var(--txt-primary)' }}>{trackResult.rejectionReason || 'No reason provided.'}</div>
+                    </div>
+                  )}
+
                   <div className="timeline">
                     {[
                       { label: 'Complaint Submitted', desc: `Filed on ${fmtDate(trackResult.createdAt)}`, done: true },
                       { label: 'Assigned to Collector', desc: 'Collector notified', done: trackResult.status !== 'pending' },
-                      { label: 'In Progress', desc: 'Collector working on it', done: trackResult.status === 'in-progress' || trackResult.status === 'completed' },
-                      { label: 'Completed', desc: 'Area cleaned & verified', done: trackResult.status === 'completed' },
-                    ].map((s, i, arr) => (
+                      { 
+                        label: trackResult.status === 'rejected' ? 'Rejected' : 'In Progress', 
+                        desc: trackResult.status === 'rejected' ? 'Complaint was denied' : 'Collector working on it', 
+                        done: trackResult.status === 'in-progress' || trackResult.status === 'completed' || trackResult.status === 'rejected',
+                        isError: trackResult.status === 'rejected'
+                      },
+                      { 
+                        label: 'Completed', 
+                        desc: 'Area cleaned & verified', 
+                        done: trackResult.status === 'completed',
+                        hidden: trackResult.status === 'rejected'
+                      },
+                    ].filter(s => !s.hidden).map((s, i, arr) => (
                       <div className="timeline-item" key={i}>
                         <div className="timeline-line">
-                          <div className={`timeline-dot ${s.done ? '' : 'inactive'}`}></div>
+                          <div className={`timeline-dot ${s.done ? '' : 'inactive'} ${s.isError ? 'error' : ''}`}></div>
                           {i < arr.length - 1 && <div className="timeline-connector"></div>}
                         </div>
                         <div className="timeline-content">
-                          <h4 style={{ color: s.done ? 'var(--txt-primary)' : 'var(--txt-muted)' }}>{s.label}</h4>
+                          <h4 style={{ color: s.isError ? 'var(--clr-red)' : (s.done ? 'var(--txt-primary)' : 'var(--txt-muted)') }}>{s.label}</h4>
                           <p>{s.done ? s.desc : 'Pending…'}</p>
                         </div>
                       </div>
@@ -590,34 +614,159 @@ export default function StudentDashboard() {
           {/* ── MY ORDERS ── */}
           {section === 'sec-orders' && (
             <section className="page-section active" id="sec-orders">
-              <div className="section-title"><div className="section-title-bar"></div><h2>📦 My Orders</h2></div>
+              <div className="section-title"><div className="section-title-bar"></div><h2>📦 My Orders & Redemptions</h2></div>
               <div className="stat-grid mb-3">
                 <StatCard icon="📦" value={myOrders.length} label="Total Orders" />
                 <StatCard icon="⏳" value={myOrders.filter(o => o.status === 'pending').length} label="Pending" />
-                <StatCard icon="✅" value={myOrders.filter(o => o.status === 'delivered').length} label="Delivered" />
+                <StatCard icon="🎁" value={myOrders.filter(o => o.status === 'ready_for_pickup').length} label="Ready for Pickup" />
               </div>
-              <div className="table-wrap">
-                <table>
-                  <thead><tr><th>Order ID</th><th>Item</th><th>Points</th><th>Date</th><th>Status</th></tr></thead>
-                  <tbody>
-                    {myOrders.length === 0 ? (
-                      <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: 'var(--txt-muted)' }}>No orders yet. Visit the Store to redeem items!</td></tr>
-                    ) : myOrders.map((o) => (
-                      <tr key={o.orderId}>
-                        <td><span style={{ fontWeight: 700, color: 'var(--clr-blue)' }}>{o.orderId}</span></td>
-                        <td>{o.itemName}</td>
-                        <td><span style={{ fontWeight: 600, color: 'var(--clr-amber)' }}>⭐ {o.pointsSpent}</span></td>
-                        <td>{fmtDate(o.createdAt)}</td>
-                        <td><StatusBadge status={o.status === 'approved' ? 'in-progress' : o.status === 'delivered' ? 'completed' : 'pending'} /></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+
+              <div className="order-list-vertical">
+                {myOrders.length === 0 ? (
+                  <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
+                    <div style={{ fontSize: '3rem' }}>🛍️</div>
+                    <h3>No orders found</h3>
+                    <p className="text-muted">Redeem your points in the Eco Store to see your orders here!</p>
+                  </div>
+                ) : myOrders.map((o) => (
+                  <div className="card order-tracking-card" key={o.orderId}>
+                    <div className="order-tracking-header">
+                      <div>
+                        <div className="order-id-label">Order <span style={{ color: 'var(--clr-blue)' }}>{o.orderId}</span></div>
+                        <div className="order-date-label">{fmtDate(o.createdAt)}</div>
+                      </div>
+                      <div className="order-points-badge">⭐ {o.pointsSpent} pts</div>
+                    </div>
+                    
+                    <div className="order-details-grid">
+                      <div className="order-item-info">
+                        <div className="text-muted" style={{ fontSize: '.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Product</div>
+                        <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{o.itemName}</div>
+                      </div>
+                      
+                      <div className="order-pickup-info">
+                        <div className="info-row">
+                          <span className="info-icon">📍</span>
+                          <div>
+                            <div className="info-label">Pickup Location</div>
+                            <div className="info-value">{o.pickupLocation || 'Admin Office'}</div>
+                          </div>
+                        </div>
+                        <div className="info-row">
+                          <span className="info-icon">🕒</span>
+                          <div>
+                            <div className="info-label">Available Time</div>
+                            <div className="info-value">{o.pickupTime || '10 AM - 5 PM'}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {o.pickupCode && (
+                        <div className="order-pickup-code-box">
+                          <div className="info-label">🔐 Pickup Code</div>
+                          <div className="pickup-code-value">{o.pickupCode}</div>
+                          <div className="text-muted" style={{ fontSize: '.65rem', marginTop: '.2rem' }}>Show this at pickup</div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="order-status-visual">
+                      <div className="status-progress-container">
+                        {[
+                          { id: 'pending', label: 'Pending', icon: '⏳' },
+                          { id: 'approved', label: 'Approved', icon: '👍' },
+                          { id: 'ready_for_pickup', label: 'Ready', icon: '🎁' },
+                          { id: 'delivered', label: 'Delivered', icon: '✅' },
+                        ].map((step, idx, steps) => {
+                          const statusOrder = ['pending', 'approved', 'ready_for_pickup', 'delivered'];
+                          const currentIdx = statusOrder.indexOf(o.status);
+                          const isCompleted = idx < currentIdx || o.status === 'delivered';
+                          const isActive = idx === currentIdx && o.status !== 'delivered';
+                          return (
+                            <div key={idx} className={`progress-step ${isCompleted ? 'completed' : ''} ${isActive ? 'active' : ''}`}>
+                              <div className="step-point">{isCompleted ? '✔' : step.icon}</div>
+                              <div className="step-label">{step.label}</div>
+                              {idx < steps.length - 1 && <div className="step-line" />}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div style={{ textAlign: 'right', marginTop: '.75rem' }}>
+                      <button className="btn btn-sm btn-blue" onClick={() => { setReceiptOrder(o); setReceiptModalOpen(true); }}>🧾 View Receipt</button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </section>
           )}
 
+
         </div>
+
+        {/* ── RECEIPT MODAL ── */}
+        <Modal id="receipt-modal" isOpen={receiptModalOpen} onClose={() => setReceiptModalOpen(false)} title="🧾 Order Receipt">
+          {receiptOrder && (
+            <div className="receipt-container">
+              <div className="receipt-header">
+                <div className="receipt-logo">♻️ SustainX</div>
+                <div className="receipt-subtitle">Eco Store — Order Receipt</div>
+              </div>
+
+              <div className="receipt-divider"></div>
+
+              <div className="receipt-body">
+                <div className="receipt-row">
+                  <span className="receipt-label">📋 Order ID</span>
+                  <span className="receipt-value">{receiptOrder.orderId}</span>
+                </div>
+                <div className="receipt-row">
+                  <span className="receipt-label">📦 Product</span>
+                  <span className="receipt-value" style={{ fontWeight: 700 }}>{receiptOrder.itemName}</span>
+                </div>
+                <div className="receipt-row">
+                  <span className="receipt-label">⭐ Points Used</span>
+                  <span className="receipt-value">{receiptOrder.pointsSpent} pts</span>
+                </div>
+                <div className="receipt-row">
+                  <span className="receipt-label">📅 Date</span>
+                  <span className="receipt-value">{fmtDate(receiptOrder.createdAt)}</span>
+                </div>
+                <div className="receipt-row">
+                  <span className="receipt-label">📍 Pickup Location</span>
+                  <span className="receipt-value">{receiptOrder.pickupLocation || 'Admin Office / College Store Room'}</span>
+                </div>
+                <div className="receipt-row">
+                  <span className="receipt-label">🕒 Pickup Time</span>
+                  <span className="receipt-value">{receiptOrder.pickupTime || '10 AM – 5 PM'}</span>
+                </div>
+                <div className="receipt-row">
+                  <span className="receipt-label">📌 Status</span>
+                  <span className="receipt-value" style={{ textTransform: 'capitalize' }}>{receiptOrder.status.replace(/_/g, ' ')}</span>
+                </div>
+              </div>
+
+              <div className="receipt-divider"></div>
+
+              {receiptOrder.pickupCode && (
+                <div className="receipt-code-section">
+                  <div className="receipt-label" style={{ textAlign: 'center', marginBottom: '.3rem' }}>🔐 Pickup Code</div>
+                  <div className="receipt-pickup-code">{receiptOrder.pickupCode}</div>
+                  <div className="text-muted" style={{ textAlign: 'center', fontSize: '.7rem', marginTop: '.3rem' }}>Present this code at the pickup counter</div>
+                </div>
+              )}
+
+              <div className="receipt-divider"></div>
+
+              <div className="receipt-footer">
+                <p>Thank you for choosing eco-friendly products! 🌱</p>
+                <button className="btn btn-primary" onClick={() => window.print()} style={{ marginTop: '.75rem' }}>🖨️ Print Receipt</button>
+              </div>
+            </div>
+          )}
+        </Modal>
+
       </main>
     </div>
   );

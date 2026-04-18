@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+// Trigger Restart: 2026-04-18T16:42:00Z
 const path = require('path');
 const connectDB = require('./config/db');
 
@@ -50,7 +51,10 @@ app.use((err, req, res, next) => {
   }
 
   console.error(err.stack);
-  res.status(500).json({ message: 'Internal server error' });
+  res.status(500).json({ 
+    message: `Internal server error: ${err.message}`,
+    error: err.name
+  });
 });
 
 const PORT = process.env.PORT || 5000;

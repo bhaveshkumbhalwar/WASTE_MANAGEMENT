@@ -1,5 +1,7 @@
 const Complaint = require('../models/Complaint');
 const User = require('../models/User');
+const Reward = require('../models/Reward');
+
 
 // Generate sequential complaint ID
 const generateComplaintId = async () => {
@@ -143,10 +145,24 @@ const submitComplaint = async (req, res) => {
 // @route   PUT /api/complaints/:id/status
 const updateComplaintStatus = async (req, res) => {
   try {
-    const { status, note } = req.body;
+    const { status, note, rejectionReason } = req.body;
+    
+    // DEBUG LOG
+    console.log(`📋 [PUT /api/complaints/${req.params.id}/status] Payload:`, JSON.stringify(req.body));
 
     if (!status) {
       return res.status(400).json({ message: 'Please provide a status' });
+    }
+
+    const validStatuses = ['pending', 'in-progress', 'completed', 'rejected'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
+    }
+
+    // STEP 2: REJECTION VALIDATION
+    if (status === 'rejected' && (!rejectionReason || !rejectionReason.trim())) {
+      console.warn(`⚠️ [REJECT ERROR] Missing reason for complaint ${req.params.id}`);
+      return res.status(400).json({ message: 'Rejection reason is required when rejecting a complaint.' });
     }
 
     const complaint = await Complaint.findOne({
@@ -156,23 +172,74 @@ const updateComplaintStatus = async (req, res) => {
 
     // Security: collector can only update complaints from their block
     if (req.user.role === 'collector' && complaint.block !== req.user.block) {
-      console.warn(`🚫 [PUT /complaints] Collector ${req.user.userId} (Block ${req.user.block}) tried to update ${complaint.complaintId} (Block ${complaint.block})`);
+      console.warn(`🚫 [ACCESS DENIED] Collector ${req.user.userId} (Block ${req.user.block}) tried to update ${complaint.complaintId} (Block ${complaint.block})`);
       return res.status(403).json({ message: 'Access denied: cannot update complaints from another block' });
     }
 
-    complaint.status = status;
+    // Prevent updating already completed or rejected complaints
+    if (['completed', 'rejected'].includes(complaint.status)) {
+      return res.status(400).json({ message: `Cannot update a complaint that is already ${complaint.status}.` });
+    }
+
+    // STEP 3: SAVE DATA SAFELY
+    if (status) complaint.status = status;
+
+    if (status === 'rejected') {
+      complaint.rejectionReason = rejectionReason.trim();
+    }
+
     complaint.statusHistory.push({
       status,
-      note: note || `Status updated to ${status}`,
+      note: status === 'rejected'
+        ? `Rejected: ${rejectionReason.trim()}`
+        : (note || `Status updated to ${status}`),
       updatedBy: req.user.userId,
       timestamp: new Date(),
     });
 
+    // ── Reward Logic (Collector only — NOT for rejected) ──
+    if (status === 'completed' && req.user.role === 'collector' && !complaint.rewardGiven) {
+      if (complaint.assignedTo === req.user.userId) {
+        // Atomic increment using User.findOneAndUpdate
+        const collector = await User.findOneAndUpdate(
+          { userId: req.user.userId },
+          { $inc: { rewardPoints: 10 } },
+          { new: true }
+        );
+
+        if (collector) {
+          complaint.rewardGiven = true;
+          // Create Reward Log
+          await Reward.create({
+            userId: req.user.userId,
+            activity: `Resolved Complaint ${complaint.complaintId}`,
+            points: 10,
+          });
+          console.log(`🏆 [REWARD] Collector ${req.user.userId} earned 10 pts for ${complaint.complaintId}`);
+        }
+      }
+    }
+
     await complaint.save();
+    console.log(`✅ [SUCCESS] ${complaint.complaintId} set to ${status}`);
     res.json(complaint);
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    // FULL DIAGNOSTIC REPORTING
+    console.error(`❌ [REJECT ERROR] Full Error Object:`, err);
+    
+    // Return a combined message that includes the stack or validation details
+    let errorDetail = err.message;
+    if (err.name === 'ValidationError') {
+      errorDetail = Object.values(err.errors).map(e => e.message).join(' | ');
+    }
+
+    res.status(500).json({ 
+      message: `Server Error: ${errorDetail}`, 
+      type: err.name,
+      id: req.params.id
+    });
   }
 };
+
 
 module.exports = { getComplaints, getComplaintById, submitComplaint, updateComplaintStatus };

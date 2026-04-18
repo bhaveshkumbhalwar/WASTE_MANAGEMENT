@@ -17,10 +17,13 @@ import {
   getRewards,
   addReward,
   changePassword,
+  getOrders,
+  updateOrderStatus,
 } from '../../services/api';
 
 const NAV_ITEMS = [
   { id: 'sec-dashboard', label: 'Dashboard', icon: '📊' },
+  { id: 'sec-store-orders', label: 'Store Orders', icon: '🛍️' },
   { id: 'sec-collectors', label: 'Manage Collectors', icon: '🚛' },
   { id: 'sec-users', label: 'Manage Students', icon: '🎓' },
   { id: 'sec-rewards', label: 'Give Rewards', icon: '🏆' },
@@ -46,6 +49,9 @@ export default function AdminDashboard() {
   // Collectors
   const [collectors, setCollectors] = useState([]);
   const [createCollectorModalOpen, setCreateCollectorModalOpen] = useState(false);
+
+  // Store Orders
+  const [allOrders, setAllOrders] = useState([]);
 
   // View user modal
   const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -135,6 +141,13 @@ export default function AdminDashboard() {
     } catch { /* ignore */ }
   }, [user.userId]);
 
+  const loadStoreOrders = useCallback(async () => {
+    try {
+      const res = await getOrders();
+      setAllOrders(res.data);
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     loadStats();
     loadComplaints();
@@ -143,7 +156,8 @@ export default function AdminDashboard() {
     loadStudents();
     loadAllRewards();
     loadProfile();
-  }, [loadStats, loadComplaints, loadStudentUsers, loadCollectors, loadStudents, loadAllRewards, loadProfile]);
+    loadStoreOrders();
+  }, [loadStats, loadComplaints, loadStudentUsers, loadCollectors, loadStudents, loadAllRewards, loadProfile, loadStoreOrders]);
 
   /* ════════════ Handlers ════════════ */
 
@@ -253,6 +267,16 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleOrderStatus = async (orderId, newStatus) => {
+    try {
+      await updateOrderStatus(orderId, { status: newStatus });
+      showToast(`Order ${orderId} status set to ${newStatus} ✅`);
+      loadStoreOrders();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Error updating status', 'error');
+    }
+  };
+
   const currentLabel = NAV_ITEMS.find((n) => n.id === section)?.label || '';
 
   return (
@@ -278,6 +302,8 @@ export default function AdminDashboard() {
                 <StatCard icon="⏳" value={stats.pending} label="Pending" borderColor="var(--clr-amber)" />
                 <StatCard icon="🔄" value={stats.progress} label="In Progress" borderColor="var(--clr-blue)" />
                 <StatCard icon="✅" value={stats.done} label="Resolved" borderColor="var(--clr-green)" />
+                <StatCard icon="🛍️" value={allOrders.length} label="Store Sales" borderColor="var(--clr-brown)" />
+                <StatCard icon="🎁" value={allOrders.filter(o => o.status === 'ready_for_pickup').length} label="Pending Pickups" borderColor="var(--clr-amber)" />
                 <StatCard icon="🎓" value={stats.students} label="Students" borderColor="var(--clr-navy)" />
                 <StatCard icon="🚛" value={stats.collectors} label="Collectors" borderColor="var(--clr-green)" />
               </div>
@@ -297,12 +323,76 @@ export default function AdminDashboard() {
                           <td><span className="badge badge-progress">🏢 {c.block || '—'}</span></td>
                           <td>{c.assignedTo || <span style={{ color: 'var(--txt-muted)', fontSize: '.8rem' }}>Unassigned</span>}</td>
                           <td>{fmtDate(c.createdAt)}</td>
-                          <td><StatusBadge status={c.status} /></td>
+                          <td>
+                            <StatusBadge status={c.status} />
+                            {c.status === 'rejected' && c.rejectionReason && (
+                              <div style={{ fontSize: '.7rem', color: 'var(--clr-red)', marginTop: '.3rem', maxWidth: '150px', lineHeight: 1.2 }}>
+                                <strong>Reason:</strong> {c.rejectionReason}
+                              </div>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
+              </div>
+            </section>
+          )}
+
+          {/* ── STORE ORDERS ── */}
+          {section === 'sec-store-orders' && (
+            <section className="page-section active">
+              <div className="section-title"><div className="section-title-bar"></div><h2>🛍️ Store Orders Management</h2></div>
+              
+              <div className="stat-grid mb-3">
+                <StatCard icon="📦" value={allOrders.length} label="Total Orders" />
+                <StatCard icon="⏳" value={allOrders.filter(o => o.status === 'pending').length} label="Pending" />
+                <StatCard icon="🔄" value={allOrders.filter(o => o.status === 'approved').length} label="In Progress" />
+                <StatCard icon="🎁" value={allOrders.filter(o => o.status === 'ready_for_pickup').length} label="Ready" />
+                <StatCard icon="✅" value={allOrders.filter(o => o.status === 'delivered').length} label="Delivered" />
+              </div>
+
+              <div className="table-wrap">
+                <table>
+                  <thead><tr><th>Order ID</th><th>Customer</th><th>Product</th><th>Status Tracking</th><th>Actions</th></tr></thead>
+                  <tbody>
+                    {allOrders.length === 0 ? (
+                      <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: 'var(--txt-muted)' }}>No marketplace activity yet.</td></tr>
+                    ) : allOrders.map((o) => (
+                      <tr key={o.orderId}>
+                        <td><strong style={{ color: 'var(--clr-blue)' }}>{o.orderId}</strong><div className="text-muted" style={{ fontSize: '.7rem' }}>{fmtDate(o.createdAt)}</div></td>
+                        <td>{o.userName}<div className="text-muted" style={{ fontSize: '.7rem' }}>{o.userId}</div></td>
+                        <td>{o.itemName}<div className="text-muted" style={{ fontSize: '.7rem' }}>⭐ {o.pointsSpent} pts</div></td>
+                        <td style={{ minWidth: 200 }}>
+                          <div className="status-progress-container" style={{ margin: 0, paddingTop: '.5rem', transform: 'scale(0.85)', transformOrigin: 'left' }}>
+                            {['pending', 'approved', 'ready_for_pickup', 'delivered'].map((s, idx, steps) => {
+                              const statusOrder = ['pending', 'approved', 'ready_for_pickup', 'delivered'];
+                              const currentIdx = statusOrder.indexOf(o.status);
+                              const isCompleted = idx < currentIdx || o.status === 'delivered';
+                              const isActive = idx === currentIdx && o.status !== 'delivered';
+                              return (
+                                <div key={idx} className={`progress-step ${isCompleted ? 'completed' : ''} ${isActive ? 'active' : ''}`}>
+                                  <div className="step-point" style={{ width: 24, height: 24, fontSize: '.7rem' }}>{isCompleted ? '✔' : idx + 1}</div>
+                                  <div className="step-line" style={{ top: 12 }} />
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div style={{ fontSize: '.7rem', textAlign: 'center', fontWeight: 700, textTransform: 'uppercase', marginTop: '-.5rem', color: 'var(--clr-blue)' }}>{o.status.replace(/_/g, ' ')}</div>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '.4rem' }}>
+                            {o.status === 'pending' && <button className="btn btn-sm btn-blue" onClick={() => handleOrderStatus(o.orderId, 'approved')}>Approve</button>}
+                            {o.status === 'approved' && <button className="btn btn-sm btn-amber" onClick={() => handleOrderStatus(o.orderId, 'ready_for_pickup')}>Ready</button>}
+                            {o.status === 'ready_for_pickup' && <button className="btn btn-sm btn-primary" onClick={() => handleOrderStatus(o.orderId, 'delivered')}>Deliver</button>}
+                            {o.status === 'delivered' && <span className="text-muted" style={{ fontSize: '.75rem' }}>Filled</span>}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </section>
           )}

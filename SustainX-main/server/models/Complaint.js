@@ -4,7 +4,7 @@ const statusHistorySchema = new mongoose.Schema(
   {
     status: {
       type: String,
-      enum: ['pending', 'in-progress', 'completed'],
+      enum: ['pending', 'in-progress', 'in_progress', 'completed', 'rejected'],
       required: true,
     },
     note: { type: String, default: '' },
@@ -55,9 +55,13 @@ const complaintSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'in-progress', 'completed'],
+      enum: ['pending', 'in-progress', 'in_progress', 'completed', 'rejected'],
       default: 'pending',
       index: true,
+    },
+    rejectionReason: {
+      type: String,
+      default: null,
     },
     type: {
       type: String,
@@ -68,6 +72,10 @@ const complaintSchema = new mongoose.Schema(
     image: {
       type: String,
       default: null,
+    },
+    rewardGiven: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }

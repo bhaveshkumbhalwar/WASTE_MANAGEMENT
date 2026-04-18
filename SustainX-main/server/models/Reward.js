@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const rewardSchema = new mongoose.Schema(
   {
-    studentId: {
+    userId: {
       type: String,
       required: true,
       index: true,

@@ -1,6 +1,7 @@
 const StoreItem = require('../models/StoreItem');
 const Order = require('../models/Order');
 const User = require('../models/User');
+const Reward = require('../models/Reward');
 
 // ── Generate sequential order ID ──
 const generateOrderId = async () => {
@@ -52,7 +53,7 @@ const createStoreItem = async (req, res) => {
 // REDEEM
 // ──────────────────────────────────────────────────────────────
 
-// @desc    Redeem item (student only)
+// @desc    Redeem item (student/collector)
 // @route   POST /api/store/redeem
 const redeemItem = async (req, res) => {
   try {
@@ -96,6 +97,16 @@ const redeemItem = async (req, res) => {
 
     // 7. Create order
     const orderId = await generateOrderId();
+
+    // ── Generate Unique 6-Char Pickup Code ──
+    const generateCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
+    let code;
+    let exists = true;
+    while (exists) {
+      code = generateCode();
+      exists = await Order.findOne({ pickupCode: code });
+    }
+
     const order = await Order.create({
       orderId,
       userId: user.userId,
@@ -103,6 +114,7 @@ const redeemItem = async (req, res) => {
       item: item._id,
       itemName: item.name,
       pointsSpent: item.pointsRequired,
+      pickupCode: code,
     });
 
     console.log(`🛒 [STORE] ${user.userId} redeemed "${item.name}" for ${item.pointsRequired} pts → Order ${orderId}`);
@@ -152,24 +164,54 @@ const updateOrderStatus = async (req, res) => {
   try {
     const { status } = req.body;
 
-    if (!status || !['pending', 'approved', 'delivered'].includes(status)) {
-      return res.status(400).json({ message: 'Invalid status. Must be pending, approved, or delivered.' });
+    const validStatuses = ['pending', 'approved', 'ready_for_pickup', 'delivered'];
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({ message: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
     }
 
     const order = await Order.findOne({ orderId: req.params.id.toUpperCase() });
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found.' });
+    // ── Strict Status Transition Validation ──
+    const validTransitions = {
+      pending: ['approved'],
+      approved: ['ready_for_pickup'],
+      ready_for_pickup: ['delivered'],
+    };
+
+    if (validTransitions[order.status] && !validTransitions[order.status].includes(status)) {
+      return res.status(400).json({
+        message: `Invalid status transition: ${order.status} → ${status}. Allowed: ${validTransitions[order.status].join(', ')}`,
+      });
     }
 
     order.status = status;
+
+    // ── Reward Logic (Collector only) ──
+    if (status === 'delivered' && req.user.role === 'collector' && !order.rewardGiven) {
+      // Atomic increment of collector's rewardPoints
+      const collector = await User.findOneAndUpdate(
+        { userId: req.user.userId },
+        { $inc: { rewardPoints: 20 } },
+        { new: true }
+      );
+
+      if (collector) {
+        order.rewardGiven = true;
+        // Create Reward Log entry
+        await Reward.create({
+          userId: req.user.userId,
+          activity: `Delivered Order ${order.orderId}`,
+          points: 20,
+        });
+        console.log(`🏆 [REWARD] Collector ${req.user.userId} earned 20 pts for delivery ${order.orderId}`);
+      }
+    }
+
     await order.save();
-
-    console.log(`📦 [ORDER] ${order.orderId} → status: ${status} (by ${req.user.userId})`);
-
     res.json(order);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
 
 module.exports = { getStoreItems, createStoreItem, redeemItem, getOrders, updateOrderStatus };

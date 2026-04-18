@@ -31,9 +31,25 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'approved', 'delivered'],
+      enum: ['pending', 'approved', 'ready_for_pickup', 'delivered'],
       default: 'pending',
       index: true,
+    },
+    pickupLocation: {
+      type: String,
+      default: 'Admin Office / College Store Room',
+    },
+    pickupTime: {
+      type: String,
+      default: '10 AM – 5 PM',
+    },
+    pickupCode: {
+      type: String,
+      unique: true,
+    },
+    rewardGiven: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }
