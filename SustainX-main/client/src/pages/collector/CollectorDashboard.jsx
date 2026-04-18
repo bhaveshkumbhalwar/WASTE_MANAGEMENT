@@ -13,11 +13,14 @@ import {
   getDashboardStats,
   changePassword,
   getUserById,
+  getOrders,
+  updateOrderStatus,
 } from '../../services/api';
 
 const NAV_ITEMS = [
   { id: 'sec-dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'sec-history', label: 'History', icon: '✅' },
+  { id: 'sec-store-orders', label: 'Store Orders', icon: '📦' },
   { id: 'sec-awareness', label: 'Awareness', icon: '🌱' },
   { id: 'sec-profile', label: 'Profile', icon: '👤' },
 ];
@@ -39,12 +42,17 @@ export default function CollectorDashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [activeId, setActiveId] = useState('');
   const [modalStatus, setModalStatus] = useState('in-progress');
+  const [selectedComplaint, setSelectedComplaint] = useState(null);
 
   // Profile
   const [profile, setProfile] = useState(null);
   const [cpOld, setCpOld] = useState('');
   const [cpNew, setCpNew] = useState('');
   const [cpConfirm, setCpConfirm] = useState('');
+
+  // Store orders
+  const [storeOrders, setStoreOrders] = useState([]);
+  const [orderFilter, setOrderFilter] = useState('');
 
   const loadStats = useCallback(async () => {
     try {
@@ -85,12 +93,22 @@ export default function CollectorDashboard() {
     } catch { /* ignore */ }
   }, [user.userId]);
 
+  const loadStoreOrders = useCallback(async () => {
+    try {
+      const params = {};
+      if (orderFilter) params.status = orderFilter;
+      const res = await getOrders(params);
+      setStoreOrders(res.data);
+    } catch { /* ignore */ }
+  }, [orderFilter]);
+
   useEffect(() => {
     loadStats();
     loadDashboard();
     loadHistory();
     loadProfile();
-  }, [loadStats, loadDashboard, loadHistory, loadProfile]);
+    loadStoreOrders();
+  }, [loadStats, loadDashboard, loadHistory, loadProfile, loadStoreOrders]);
 
   // Polling every 10 seconds
   useEffect(() => {
@@ -111,6 +129,16 @@ export default function CollectorDashboard() {
       loadStats();
     } catch (err) {
       showToast(err.response?.data?.message || 'Error', 'error');
+    }
+  };
+
+  const handleOrderStatus = async (orderId, newStatus) => {
+    try {
+      await updateOrderStatus(orderId, { status: newStatus });
+      showToast(`Order ${orderId} → ${newStatus} ✅`);
+      loadStoreOrders();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Error updating order', 'error');
     }
   };
 
@@ -180,7 +208,13 @@ export default function CollectorDashboard() {
                   </div>
                 ) : openComplaints.map((c) => (
                   <div className="complaint-card" key={c.complaintId}>
-                    <div className="complaint-img">🗑️</div>
+                    <div className="complaint-img">
+                      {c.image ? (
+                        <img src={`/uploads/${c.image}`} alt="complaint" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }} />
+                      ) : (
+                        '🗑️'
+                      )}
+                    </div>
                     <div className="complaint-body">
                       <div className="complaint-id">{c.complaintId}</div>
                       <div className="complaint-location">📍 {c.location}</div>
@@ -189,7 +223,7 @@ export default function CollectorDashboard() {
                         <StatusBadge status={c.status} />
                         <button
                           className="btn btn-primary btn-sm"
-                          onClick={() => { setActiveId(c.complaintId); setModalStatus('in-progress'); setModalOpen(true); }}
+                          onClick={() => { setActiveId(c.complaintId); setSelectedComplaint(c); setModalStatus('in-progress'); setModalOpen(true); }}
                         >
                           Update Status
                         </button>
@@ -221,6 +255,59 @@ export default function CollectorDashboard() {
                         <td>{c.wasteType}</td>
                         <td>{fmtDate(c.createdAt)}</td>
                         <td><StatusBadge status={c.status} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+          {/* ── STORE ORDERS ── */}
+          {section === 'sec-store-orders' && (
+            <section className="page-section active">
+              <div className="section-title"><div className="section-title-bar"></div><h2>📦 Store Orders</h2></div>
+              <div className="stat-grid mb-3">
+                <StatCard icon="📦" value={storeOrders.length} label="Total Orders" />
+                <StatCard icon="⏳" value={storeOrders.filter(o => o.status === 'pending').length} label="Pending" />
+                <StatCard icon="👍" value={storeOrders.filter(o => o.status === 'approved').length} label="Approved" />
+                <StatCard icon="✅" value={storeOrders.filter(o => o.status === 'delivered').length} label="Delivered" />
+              </div>
+
+              <div style={{ display: 'flex', gap: '.5rem', marginBottom: '1.2rem', flexWrap: 'wrap' }}>
+                {[{ label: 'All', filter: '' }, { label: '⏳ Pending', filter: 'pending' }, { label: '👍 Approved', filter: 'approved' }, { label: '✅ Delivered', filter: 'delivered' }].map((t) => (
+                  <button key={t.filter} className={`btn btn-sm ${orderFilter === t.filter ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setOrderFilter(t.filter)}>{t.label}</button>
+                ))}
+              </div>
+
+              <div className="table-wrap">
+                <table>
+                  <thead><tr><th>Order ID</th><th>Student</th><th>Item</th><th>Points</th><th>Date</th><th>Status</th><th>Action</th></tr></thead>
+                  <tbody>
+                    {storeOrders.length === 0 ? (
+                      <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--txt-muted)' }}>No orders found.</td></tr>
+                    ) : storeOrders.map((o) => (
+                      <tr key={o.orderId}>
+                        <td><span style={{ fontWeight: 700, color: 'var(--clr-blue)' }}>{o.orderId}</span></td>
+                        <td>
+                          <div style={{ fontSize: '.85rem' }}>{o.userName}</div>
+                          <div className="text-muted" style={{ fontSize: '.72rem' }}>{o.userId}</div>
+                        </td>
+                        <td>{o.itemName}</td>
+                        <td><span style={{ fontWeight: 600, color: 'var(--clr-amber)' }}>⭐ {o.pointsSpent}</span></td>
+                        <td>{fmtDate(o.createdAt)}</td>
+                        <td><StatusBadge status={o.status === 'approved' ? 'in-progress' : o.status === 'delivered' ? 'completed' : 'pending'} /></td>
+                        <td>
+                          {o.status === 'pending' && (
+                            <button className="btn btn-sm btn-blue" onClick={() => handleOrderStatus(o.orderId, 'approved')}>👍 Approve</button>
+                          )}
+                          {o.status === 'approved' && (
+                            <button className="btn btn-sm btn-primary" onClick={() => handleOrderStatus(o.orderId, 'delivered')}>🚚 Deliver</button>
+                          )}
+                          {o.status === 'delivered' && (
+                            <span className="text-muted" style={{ fontSize: '.8rem' }}>Done</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -289,6 +376,19 @@ export default function CollectorDashboard() {
         <p style={{ marginBottom: '1rem', fontSize: '.88rem', color: 'var(--txt-muted)' }}>
           ID: <strong>{activeId}</strong>
         </p>
+        {selectedComplaint?.image ? (
+          <div className="modal-image-wrap" style={{ marginBottom: '1rem' }}>
+            <img
+              src={`/uploads/${selectedComplaint.image}`}
+              alt="Complaint evidence"
+              style={{ width: '100%', maxHeight: '280px', objectFit: 'contain', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-card)' }}
+            />
+          </div>
+        ) : (
+          <div style={{ marginBottom: '1rem', padding: '1.2rem', borderRadius: '8px', background: 'var(--bg-muted, rgba(0,0,0,.04))', textAlign: 'center', color: 'var(--txt-muted)', fontSize: '.85rem' }}>
+            🖼️ No image provided
+          </div>
+        )}
         <div className="form-group mb-2">
           <label className="form-label">New Status</label>
           <select className="form-select" value={modalStatus} onChange={(e) => setModalStatus(e.target.value)}>

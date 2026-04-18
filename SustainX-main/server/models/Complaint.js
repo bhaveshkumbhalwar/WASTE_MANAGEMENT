@@ -65,6 +65,10 @@ const complaintSchema = new mongoose.Schema(
       default: 'complaint',
     },
     statusHistory: [statusHistorySchema],
+    image: {
+      type: String,
+      default: null,
+    },
   },
   { timestamps: true }
 );

@@ -14,6 +14,9 @@ import {
   addReward,
   changePassword,
   getUserById,
+  getStoreItems,
+  redeemStoreItem,
+  getOrders,
 } from '../../services/api';
 
 const NAV_ITEMS = [
@@ -23,6 +26,8 @@ const NAV_ITEMS = [
   { id: 'sec-status', label: 'Track Status', icon: '🔍' },
   { id: 'sec-scan', label: 'Quick Scan', icon: '📱' },
   { id: 'sec-reward', label: 'Rewards', icon: '🏆' },
+  { id: 'sec-store', label: 'Store', icon: '🛒' },
+  { id: 'sec-orders', label: 'My Orders', icon: '📦' },
   { id: 'sec-awareness', label: 'Awareness', icon: '🌱' },
 ];
 
@@ -40,6 +45,8 @@ export default function StudentDashboard() {
   const [compType, setCompType] = useState('');
   const [compDesc, setCompDesc] = useState('');
   const [compBlock, setCompBlock] = useState('');
+  const [compImage, setCompImage] = useState(null);
+  const [compPreview, setCompPreview] = useState(null);
 
   // History
   const [complaints, setComplaints] = useState([]);
@@ -65,6 +72,10 @@ export default function StudentDashboard() {
 
   // Carousel
   const [carouselIdx, setCarouselIdx] = useState(0);
+
+  // Store
+  const [storeItems, setStoreItems] = useState([]);
+  const [myOrders, setMyOrders] = useState([]);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -97,6 +108,8 @@ export default function StudentDashboard() {
     loadProfile();
     loadHistory();
     loadRewards();
+    loadStore();
+    loadOrders();
   }, [loadProfile, loadHistory, loadRewards]);
 
   // Carousel auto-rotate
@@ -106,6 +119,47 @@ export default function StudentDashboard() {
     return () => clearInterval(timer);
   }, []);
 
+  const loadStore = async () => {
+    try {
+      const res = await getStoreItems();
+      setStoreItems(res.data);
+    } catch { /* ignore */ }
+  };
+
+  const loadOrders = async () => {
+    try {
+      const res = await getOrders();
+      setMyOrders(res.data);
+    } catch { /* ignore */ }
+  };
+
+  const handleRedeem = async (itemId) => {
+    try {
+      const res = await redeemStoreItem(itemId);
+      showToast(`Item redeemed! Order ${res.data.order.orderId} created. Remaining: ${res.data.remainingPoints} pts ✅`);
+      loadStore();
+      loadOrders();
+      loadProfile();
+      loadRewards();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Error redeeming item', 'error');
+    }
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) { setCompImage(null); setCompPreview(null); return; }
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('Image must be under 2 MB.', 'warning');
+      e.target.value = '';
+      return;
+    }
+    setCompImage(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setCompPreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
   const handleComplaint = async (e) => {
     e.preventDefault();
     if (!compLocation || !compType || !compDesc || !compBlock) {
@@ -113,9 +167,17 @@ export default function StudentDashboard() {
       return;
     }
     try {
-      const res = await submitComplaint({ location: compLocation, wasteType: compType, description: compDesc, block: compBlock });
+      const formData = new FormData();
+      formData.append('location', compLocation);
+      formData.append('wasteType', compType);
+      formData.append('description', compDesc);
+      formData.append('block', compBlock);
+      if (compImage) formData.append('image', compImage);
+
+      const res = await submitComplaint(formData);
       showToast(`Complaint ${res.data.complaintId} submitted! ✅`);
       setCompLocation(''); setCompType(''); setCompDesc(''); setCompBlock('');
+      setCompImage(null); setCompPreview(null);
       loadProfile(); loadHistory();
     } catch (err) {
       showToast(err.response?.data?.message || 'Error submitting', 'error');
@@ -263,6 +325,24 @@ export default function StudentDashboard() {
                   <div className="form-group">
                     <label className="form-label">Description</label>
                     <textarea className="form-textarea" placeholder="Describe the waste situation…" value={compDesc} onChange={(e) => setCompDesc(e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Attach Image (optional)</label>
+                    <div className="upload-zone" onClick={() => document.getElementById('complaint-image-input').click()}>
+                      {compPreview ? (
+                        <div className="upload-preview">
+                          <img src={compPreview} alt="Preview" />
+                          <button type="button" className="upload-remove" onClick={(e) => { e.stopPropagation(); setCompImage(null); setCompPreview(null); document.getElementById('complaint-image-input').value = ''; }}>✕</button>
+                        </div>
+                      ) : (
+                        <div className="upload-placeholder">
+                          <span className="upload-icon">📷</span>
+                          <span>Click to upload image</span>
+                          <span className="text-muted" style={{ fontSize: '.75rem' }}>JPG, PNG, WEBP — max 2 MB</span>
+                        </div>
+                      )}
+                      <input id="complaint-image-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleImageChange} style={{ display: 'none' }} />
+                    </div>
                   </div>
                   <button type="submit" className="btn btn-primary btn-lg">📤 Submit Complaint</button>
                 </form>
@@ -440,6 +520,85 @@ export default function StudentDashboard() {
                 {Array.from({ length: slides }).map((_, i) => (
                   <button key={i} className={`carousel-dot ${carouselIdx === i ? 'active' : ''}`} onClick={() => setCarouselIdx(i)} />
                 ))}
+              </div>
+            </section>
+          )}
+
+          {/* ── STORE ── */}
+          {section === 'sec-store' && (
+            <section className="page-section active" id="sec-store">
+              <div className="section-title"><div className="section-title-bar"></div><h2>🛒 Eco Store</h2></div>
+              <p style={{ marginBottom: '1.2rem', color: 'var(--txt-muted)', fontSize: '.9rem' }}>
+                Redeem your reward points for items made from recycled waste! You have <strong style={{ color: 'var(--clr-green)' }}>{rewardTotal} pts</strong>.
+              </p>
+              <div className="grid-3" style={{ gap: '1rem' }}>
+                {storeItems.length === 0 ? (
+                  <div className="card" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '2rem' }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '.7rem' }}>🏪</div>
+                    <h3>Store is empty</h3>
+                    <p className="text-muted">No items available yet. Check back soon!</p>
+                  </div>
+                ) : storeItems.map((item) => (
+                  <div className="store-card" key={item._id}>
+                    <div className="store-card-img">
+                      {item.image ? (
+                        <img src={`/uploads/${item.image}`} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <span className="store-card-emoji">{item.category === 'stationery' ? '📝' : item.category === 'accessories' ? '👜' : item.category === 'garden' ? '🌱' : item.category === 'home' ? '🏠' : '♻️'}</span>
+                      )}
+                      <span className="store-eco-badge">♻️ Eco-friendly</span>
+                    </div>
+                    <div className="store-card-body">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', marginBottom: '.35rem' }}>
+                        <div className="store-card-name" style={{ marginBottom: 0 }}>{item.name}</div>
+                      </div>
+                      <span className="store-category-tag">{item.category || 'other'}</span>
+                      <div className="store-card-desc">{item.description}</div>
+                      <div className="store-card-footer">
+                        <div className="store-card-points">⭐ {item.pointsRequired} pts</div>
+                        <span className="text-muted" style={{ fontSize: '.75rem' }}>{item.stock > 0 ? `${item.stock} left` : 'Out of stock'}</span>
+                      </div>
+                      <button
+                        className={`btn btn-sm btn-full ${rewardTotal >= item.pointsRequired && item.stock > 0 ? 'btn-primary' : 'btn-ghost'}`}
+                        disabled={rewardTotal < item.pointsRequired || item.stock <= 0}
+                        onClick={() => handleRedeem(item._id)}
+                        style={{ marginTop: '.6rem' }}
+                      >
+                        {item.stock <= 0 ? '❌ Out of Stock' : rewardTotal < item.pointsRequired ? `🔒 Need ${item.pointsRequired - rewardTotal} more pts` : '🛒 Redeem'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* ── MY ORDERS ── */}
+          {section === 'sec-orders' && (
+            <section className="page-section active" id="sec-orders">
+              <div className="section-title"><div className="section-title-bar"></div><h2>📦 My Orders</h2></div>
+              <div className="stat-grid mb-3">
+                <StatCard icon="📦" value={myOrders.length} label="Total Orders" />
+                <StatCard icon="⏳" value={myOrders.filter(o => o.status === 'pending').length} label="Pending" />
+                <StatCard icon="✅" value={myOrders.filter(o => o.status === 'delivered').length} label="Delivered" />
+              </div>
+              <div className="table-wrap">
+                <table>
+                  <thead><tr><th>Order ID</th><th>Item</th><th>Points</th><th>Date</th><th>Status</th></tr></thead>
+                  <tbody>
+                    {myOrders.length === 0 ? (
+                      <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: 'var(--txt-muted)' }}>No orders yet. Visit the Store to redeem items!</td></tr>
+                    ) : myOrders.map((o) => (
+                      <tr key={o.orderId}>
+                        <td><span style={{ fontWeight: 700, color: 'var(--clr-blue)' }}>{o.orderId}</span></td>
+                        <td>{o.itemName}</td>
+                        <td><span style={{ fontWeight: 600, color: 'var(--clr-amber)' }}>⭐ {o.pointsSpent}</span></td>
+                        <td>{fmtDate(o.createdAt)}</td>
+                        <td><StatusBadge status={o.status === 'approved' ? 'in-progress' : o.status === 'delivered' ? 'completed' : 'pending'} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </section>
           )}

@@ -105,6 +105,9 @@ const submitComplaint = async (req, res) => {
       assignedTo = collectors[randomIdx].userId;
     }
 
+    // Image from multer (optional)
+    const image = req.file ? req.file.filename : null;
+
     const complaint = await Complaint.create({
       complaintId,
       studentId: req.user.userId,
@@ -115,6 +118,7 @@ const submitComplaint = async (req, res) => {
       assignedTo,
       type: type || 'complaint',
       locationData: locationData || {},
+      image,
       statusHistory: [
         {
           status: 'pending',
