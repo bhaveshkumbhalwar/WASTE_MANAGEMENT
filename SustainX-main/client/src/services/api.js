@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: '/api',
+  baseURL: "https://waste-management-3c1c.onrender.com/api"
 });
 
 // Attach token to every request

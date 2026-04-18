@@ -412,7 +412,7 @@ export default function CollectorDashboard() {
               <p style={{ marginBottom: '1.2rem', color: 'var(--txt-muted)', fontSize: '.9rem' }}>
                 Redeem your hard-earned reward points for eco-friendly products! You have <strong style={{ color: 'var(--clr-green)' }}>{rewardTotal} pts</strong>.
               </p>
-              <div className="grid-3" style={{ gap: '1rem' }}>
+              <div className="store-grid">
                 {storeItems.length === 0 ? (
                   <div className="card" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '2rem' }}>
                     <div style={{ fontSize: '3rem', marginBottom: '.7rem' }}>🏪</div>
@@ -421,12 +421,8 @@ export default function CollectorDashboard() {
                   </div>
                 ) : storeItems.map((item) => (
                   <div className="store-card" key={item._id}>
-                    <div className="store-card-img">
-                      <img 
-                        src={item.image ? (item.image.startsWith('http') ? item.image : `/uploads/${item.image}`) : "/placeholder.png"} 
-                        alt={item.name}
-                        onError={(e) => { e.target.onerror = null; e.target.src = "/placeholder.png"; }}
-                      />
+                    <div className="card-image">
+                      <img src={item.image} alt={item.name} />
                       <span className="store-eco-badge">♻️ Eco-friendly</span>
                     </div>
                     <div className="store-card-body">
