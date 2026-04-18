@@ -35,6 +35,11 @@ app.use('/api/stats', statsRoutes);
 app.use('/api/store', storeRoutes);
 app.use('/api/orders', orderRoutes);
 
+// API root check
+app.get('/api', (req, res) => {
+  res.send('🚀 SustainX API is running successfully...');
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });

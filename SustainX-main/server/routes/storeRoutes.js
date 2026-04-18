@@ -1,8 +1,4 @@
 
-app.get("/api", (req, res) => {
-  res.send("API is running...");
-});
-
 
 
 const express = require('express');

@@ -1,9 +1,4 @@
 
-app.get("/api", (req, res) => {
-    res.send("API is running...");
-});
-
-
 const express = require('express');
 const { getOrders, updateOrderStatus } = require('../controllers/storeController');
 const { protect, authorize } = require('../middleware/authMiddleware');
