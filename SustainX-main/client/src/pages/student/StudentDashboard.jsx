@@ -73,6 +73,9 @@ export default function StudentDashboard() {
   // Carousel
   const [carouselIdx, setCarouselIdx] = useState(0);
 
+  // Mobile navigation
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   // Store
   const [storeItems, setStoreItems] = useState([]);
   const [myOrders, setMyOrders] = useState([]);
@@ -231,9 +234,17 @@ export default function StudentDashboard() {
 
   return (
     <div className="app-layout">
-      <Sidebar portalName="Student Portal" icon="♻️" navItems={NAV_ITEMS} activeSection={section} onNavigate={setSection} />
+      <Sidebar
+        portalName="Student Portal"
+        icon="♻️"
+        navItems={NAV_ITEMS}
+        activeSection={section}
+        onNavigate={setSection}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+      />
       <main className="main-content">
-        <Topbar title={currentLabel} />
+        <Topbar title={currentLabel} onToggleMenu={() => setIsSidebarOpen(true)} />
         <div className="page-content">
 
           {/* ── PROFILE ── */}
@@ -541,11 +552,14 @@ export default function StudentDashboard() {
                 ) : storeItems.map((item) => (
                   <div className="store-card" key={item._id}>
                     <div className="store-card-img">
-                      {item.image ? (
-                        <img src={`/uploads/${item.image}`} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      ) : (
-                        <span className="store-card-emoji">{item.category === 'stationery' ? '📝' : item.category === 'accessories' ? '👜' : item.category === 'garden' ? '🌱' : item.category === 'home' ? '🏠' : '♻️'}</span>
-                      )}
+                      <img 
+                        src={item.image ? (item.image.startsWith('http') ? item.image : `/uploads/${item.image}`) : "/placeholder.png"} 
+                        alt={item.name}
+                        onError={(e) => {
+                          e.target.onerror = null; // Prevent infinite loop
+                          e.target.src = "/placeholder.png";
+                        }}
+                      />
                       <span className="store-eco-badge">♻️ Eco-friendly</span>
                     </div>
                     <div className="store-card-body">

@@ -30,6 +30,9 @@ export default function CollectorDashboard() {
   const { showToast } = useToast();
   const [section, setSection] = useState('sec-dashboard');
 
+  // Mobile navigation
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   // Stats
   const [stats, setStats] = useState({ total: 0, pending: 0, progress: 0, done: 0 });
 
@@ -166,9 +169,17 @@ export default function CollectorDashboard() {
 
   return (
     <div className="app-layout">
-      <Sidebar portalName="Collector Portal" icon="🚛" navItems={NAV_ITEMS} activeSection={section} onNavigate={setSection} />
+      <Sidebar
+        portalName="Collector Portal"
+        icon="🚛"
+        navItems={NAV_ITEMS}
+        activeSection={section}
+        onNavigate={setSection}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+      />
       <main className="main-content">
-        <Topbar title={currentLabel} />
+        <Topbar title={currentLabel} onToggleMenu={() => setIsSidebarOpen(true)} />
         <div className="page-content">
 
           {/* ── DASHBOARD ── */}

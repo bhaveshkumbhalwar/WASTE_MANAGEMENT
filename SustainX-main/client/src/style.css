@@ -69,6 +69,30 @@
   --sidebar-w: 240px;
 }
 
+/* ── Responsive Grids ─────────────────────────────────────── */
+.grid-4, .grid-3, .grid-2, .grid-1 {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.grid-4 { grid-template-columns: repeat(4, 1fr); }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-1 { grid-template-columns: 1fr; }
+
+@media (max-width: 1200px) {
+  .grid-4 { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 1024px) {
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+}
+
 [data-theme="dark"] {
   --bg-page: #111A11;
   --bg-card: #1C2B1C;
@@ -530,6 +554,35 @@ tbody td {
   box-shadow: 2px 0 12px rgba(0,0,0,.06);
 }
 
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .4);
+  backdrop-filter: blur(4px);
+  z-index: 95;
+  animation: fadeIn .3s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+@media (max-width: 1024px) {
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform var(--t-med);
+    box-shadow: none;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .sidebar-overlay.open {
+    display: block;
+  }
+}
+
 .sidebar-logo {
   display: flex;
   align-items: center;
@@ -680,6 +733,13 @@ tbody td {
   min-height: 100vh;
 }
 
+@media (max-width: 1024px) {
+  .main-content {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
 .topbar {
   display: flex;
   align-items: center;
@@ -692,6 +752,29 @@ tbody td {
   z-index: 90;
   backdrop-filter: blur(14px);
   transition: background var(--t-med);
+}
+
+.menu-toggle {
+  display: none;
+  background: transparent;
+  border: none;
+  font-size: 1.4rem;
+  color: var(--clr-green);
+  cursor: pointer;
+  padding: .5rem;
+  margin-left: -.5rem;
+}
+
+@media (max-width: 1024px) {
+  .topbar {
+    padding: 1rem;
+  }
+  .menu-toggle {
+    display: block;
+  }
+  .page-content {
+    padding: 1rem;
+  }
 }
 
 .topbar h2 {
@@ -1071,12 +1154,25 @@ tbody td {
 
 .store-card-img {
   width: 100%;
-  height: 140px;
-  display: grid;
-  place-items: center;
+  aspect-ratio: 16/10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: linear-gradient(135deg, rgba(145,208,108,.08), rgba(76,140,228,.08));
   overflow: hidden;
   position: relative;
+  border-bottom: 1px solid var(--border);
+}
+
+.store-card-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.store-card:hover .store-card-img img {
+  transform: scale(1.08);
 }
 
 .store-eco-badge {

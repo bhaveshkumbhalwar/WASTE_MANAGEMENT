@@ -32,6 +32,9 @@ export default function AdminDashboard() {
   const { showToast } = useToast();
   const [section, setSection] = useState('sec-dashboard');
 
+  // Mobile navigation
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   // Stats
   const [stats, setStats] = useState({ total: 0, pending: 0, progress: 0, done: 0, students: 0, collectors: 0 });
   const [allComplaints, setAllComplaints] = useState([]);
@@ -254,9 +257,17 @@ export default function AdminDashboard() {
 
   return (
     <div className="app-layout">
-      <Sidebar portalName="Admin Portal" icon="⚙️" navItems={NAV_ITEMS} activeSection={section} onNavigate={setSection} />
+      <Sidebar
+        portalName="Admin Portal"
+        icon="⚙️"
+        navItems={NAV_ITEMS}
+        activeSection={section}
+        onNavigate={setSection}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+      />
       <main className="main-content">
-        <Topbar title={currentLabel} />
+        <Topbar title={currentLabel} onToggleMenu={() => setIsSidebarOpen(true)} />
         <div className="page-content">
 
           {/* ── DASHBOARD ── */}

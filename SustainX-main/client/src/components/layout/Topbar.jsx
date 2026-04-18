@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import ThemeToggle from '../ui/ThemeToggle';
 
-export default function Topbar({ title }) {
+export default function Topbar({ title, onToggleMenu }) {
   const [time, setTime] = useState('');
 
   useEffect(() => {
@@ -17,7 +17,10 @@ export default function Topbar({ title }) {
 
   return (
     <header className="topbar">
-      <h2>{title}</h2>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <button className="menu-toggle" onClick={onToggleMenu}>☰</button>
+        <h2>{title}</h2>
+      </div>
       <div className="topbar-actions">
         <span style={{ fontSize: '.78rem', color: 'var(--txt-muted)' }}>
           🕐 {time}

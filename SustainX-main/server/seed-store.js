@@ -18,7 +18,7 @@ const PRODUCTS = [
     pointsRequired: 50,
     stock: 30,
     category: 'stationery',
-    image: null,
+    image: 'recycled-notebook.png',
   },
   {
     name: 'Plantable Seed Pencil (5-pack)',
@@ -26,7 +26,7 @@ const PRODUCTS = [
     pointsRequired: 35,
     stock: 50,
     category: 'stationery',
-    image: null,
+    image: 'seed-pencils.png',
   },
   {
     name: 'Eco Pen Set (3-pack)',
@@ -34,7 +34,7 @@ const PRODUCTS = [
     pointsRequired: 25,
     stock: 60,
     category: 'stationery',
-    image: null,
+    image: 'eco-pen-set.png',
   },
   {
     name: 'Recycled Desk Organizer',
@@ -42,7 +42,7 @@ const PRODUCTS = [
     pointsRequired: 80,
     stock: 15,
     category: 'stationery',
-    image: null,
+    image: 'desk-organizer.png',
   },
 
   // ── Home & Kitchen ─────────────────────────────────────
@@ -52,7 +52,7 @@ const PRODUCTS = [
     pointsRequired: 30,
     stock: 45,
     category: 'home',
-    image: null,
+    image: 'bamboo-toothbrush.png',
   },
   {
     name: 'Stainless Steel Lunch Box',
@@ -60,7 +60,7 @@ const PRODUCTS = [
     pointsRequired: 150,
     stock: 12,
     category: 'home',
-    image: null,
+    image: 'steel-lunchbox.png',
   },
   {
     name: 'Reusable Coffee Cup',
@@ -68,7 +68,7 @@ const PRODUCTS = [
     pointsRequired: 120,
     stock: 18,
     category: 'home',
-    image: null,
+    image: 'reusable-coffee-cup.svg',
   },
   {
     name: 'Recycled Coaster Set (4-pack)',
@@ -76,7 +76,7 @@ const PRODUCTS = [
     pointsRequired: 40,
     stock: 35,
     category: 'home',
-    image: null,
+    image: 'recycled-coasters.svg',
   },
   {
     name: 'Waste Segregation Bin (3-in-1)',
@@ -84,7 +84,7 @@ const PRODUCTS = [
     pointsRequired: 200,
     stock: 8,
     category: 'home',
-    image: null,
+    image: 'waste-segregation-bin.svg',
   },
 
   // ── Accessories ────────────────────────────────────────
@@ -94,7 +94,7 @@ const PRODUCTS = [
     pointsRequired: 60,
     stock: 40,
     category: 'accessories',
-    image: null,
+    image: 'cloth-tote-bag.svg',
   },
   {
     name: 'Steel Water Bottle (750 ml)',
@@ -102,7 +102,7 @@ const PRODUCTS = [
     pointsRequired: 100,
     stock: 20,
     category: 'accessories',
-    image: null,
+    image: 'steel-water-bottle.svg',
   },
   {
     name: 'Eco-Friendly Backpack',
@@ -110,7 +110,7 @@ const PRODUCTS = [
     pointsRequired: 250,
     stock: 6,
     category: 'accessories',
-    image: null,
+    image: 'eco-backpack.svg',
   },
   {
     name: 'Upcycled Denim Pencil Pouch',
@@ -118,7 +118,7 @@ const PRODUCTS = [
     pointsRequired: 45,
     stock: 25,
     category: 'accessories',
-    image: null,
+    image: 'denim-pencil-pouch.svg',
   },
   {
     name: 'Eco Badge / Pin',
@@ -126,7 +126,7 @@ const PRODUCTS = [
     pointsRequired: 15,
     stock: 70,
     category: 'accessories',
-    image: null,
+    image: 'eco-badge.svg',
   },
 
   // ── Garden & Outdoors ──────────────────────────────────
@@ -136,7 +136,7 @@ const PRODUCTS = [
     pointsRequired: 90,
     stock: 14,
     category: 'garden',
-    image: null,
+    image: 'compost-starter-kit.svg',
   },
   {
     name: 'Solar Power Bank (5000 mAh)',
@@ -144,7 +144,7 @@ const PRODUCTS = [
     pointsRequired: 300,
     stock: 5,
     category: 'other',
-    image: null,
+    image: 'solar-power-bank.svg',
   },
 ];
 
