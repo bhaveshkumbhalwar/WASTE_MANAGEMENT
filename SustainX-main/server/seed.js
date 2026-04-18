@@ -99,10 +99,11 @@ const seedDB = async () => {
     console.log(`📋 Seeded ${complaints.length} complaints`);
 
     // Seed Rewards
+
     const rewards = await Reward.create([
-      { studentId: 'TESTSTUD', activity: 'Waste Photo Complaint', points: 50, date: new Date('2026-03-10') },
-      { studentId: 'TESTSTUD', activity: 'Dustbin Full Alert (Scan)', points: 30, date: new Date('2026-03-12') },
-      { studentId: 'TESTSTUD', activity: 'Waste Photo Complaint', points: 40, date: new Date('2026-03-13') },
+      { userId: users[0]._id, activity: 'Waste Photo Complaint', points: 50, date: new Date('2026-03-10') },
+      { userId: users[0]._id, activity: 'Dustbin Full Alert (Scan)', points: 30, date: new Date('2026-03-12') },
+      { userId: users[0]._id, activity: 'Waste Photo Complaint', points: 40, date: new Date('2026-03-13') },
     ]);
     console.log(`🏆 Seeded ${rewards.length} rewards`);
 
