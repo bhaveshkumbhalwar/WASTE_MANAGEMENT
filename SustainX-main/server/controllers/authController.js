@@ -19,6 +19,7 @@ const generateToken = (user) => {
 const login = async (req, res) => {
   try {
     const { userId, password, role } = req.body;
+    console.log("Login attempt:", req.body);
 
     if (!userId || !password) {
       return res.status(400).json({ message: 'Please provide userId and password' });
@@ -27,12 +28,12 @@ const login = async (req, res) => {
     const user = await User.findOne({ userId: userId.toUpperCase() });
 
     if (!user) {
-      return res.status(401).json({ message: 'Invalid ID or password' });
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid ID or password' });
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     // Role mismatch check

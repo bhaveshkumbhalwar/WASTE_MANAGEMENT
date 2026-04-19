@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: "https://waste-management-3c1c.onrender.com/api",
+  baseURL: "http://localhost:5000/api",
 });
 
 // Attach token to every request
@@ -14,7 +14,10 @@ API.interceptors.request.use((config) => {
 });
 
 // Auth
-export const loginUser = (data) => API.post('/auth/login', data);
+export const loginUser = (data) => {
+  console.log("Login API:", `http://localhost:5000/api/auth/login`);
+  return API.post('/auth/login', data);
+};
 export const registerUser = (data) => API.post('/auth/register', data);
 export const getMe = () => API.get('/auth/me');
 
