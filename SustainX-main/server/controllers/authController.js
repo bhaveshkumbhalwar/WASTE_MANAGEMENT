@@ -69,13 +69,18 @@ const register = async (req, res) => {
       .split('@')[0]
       .replace(/[^a-zA-Z0-9]/g, '')
       .toUpperCase()
-      .slice(0, 12);
-    const userId = rawId || 'STU' + Date.now().toString().slice(-6);
+      .slice(0, 10);
+    
+    let userId = rawId || 'STU' + Date.now().toString().slice(-6);
 
-    // Check if userId already exists
-    const existingId = await User.findOne({ userId });
-    if (existingId) {
-      return res.status(400).json({ message: 'User ID already exists. Try a different email.' });
+    // Ensure uniqueness by appending random digits if ID is taken
+    let isUnique = await User.findOne({ userId });
+    let attempts = 0;
+    while (isUnique && attempts < 5) {
+      const suffix = Math.floor(100 + Math.random() * 900); // 3 random digits
+      userId = `${rawId}${suffix}`;
+      isUnique = await User.findOne({ userId });
+      attempts++;
     }
 
     const user = await User.create({
@@ -127,6 +132,12 @@ const forgotPassword = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
+};
+
+// @desc    Get current user
+// @route   GET /api/auth/me
+const getMe = async (req, res) => {
+  res.json({ user: req.user });
 };
 
 module.exports = { login, register, getMe, forgotPassword };

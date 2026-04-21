@@ -61,8 +61,8 @@ export default function AuthPage() {
   const handleStudentSignup = async (e) => {
     e.preventDefault();
     setError('');
-    if (!suName || !suEmail || !suDept || !suPass || !suConfirm) {
-      setError('Please fill in all fields.');
+    if (!suName || !suEmail || !suPass || !suConfirm) {
+      setError('Please fill in all required fields (Name, Email, and Password).');
       return;
     }
     if (!/^[^@]+@[^@]+\.[^@]+$/.test(suEmail)) {

@@ -22,6 +22,7 @@ connectDB();
 
 // ✅ CORS FIX (IMPORTANT)
 const allowedOrigins = [
+  "http://localhost:3000",
   "http://localhost:5173",
   "https://sustainx-frontend-7xw0.onrender.com"
 ];

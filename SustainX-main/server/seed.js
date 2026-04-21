@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const User = require('./models/User');
 const Complaint = require('./models/Complaint');
 const Reward = require('./models/Reward');
+const StoreItem = require('./models/StoreItem');
 
 const seedDB = async () => {
   try {
@@ -13,6 +14,7 @@ const seedDB = async () => {
     await User.deleteMany({});
     await Complaint.deleteMany({});
     await Reward.deleteMany({});
+    await StoreItem.deleteMany({});
     console.log('🗑️  Cleared existing data');
 
     // Seed Users
@@ -108,6 +110,51 @@ const seedDB = async () => {
       { userId: users[0].userId, user: users[0]._id, activity: 'Waste Photo Complaint', points: 40, date: new Date('2026-03-13') },
     ]);
     console.log(`🏆 Seeded ${rewards.length} rewards`);
+
+    // Seed Store Items
+    const storeItems = await StoreItem.create([
+      {
+        name: 'Bamboo Toothbrush',
+        description: 'Eco-friendly bamboo toothbrush with soft charcoal bristles.',
+        pointsRequired: 50,
+        stock: 100,
+        category: 'accessories',
+        image: 'https://images.unsplash.com/photo-1607613009820-a29f7bb81c04?auto=format&fit=crop&q=80&w=400',
+      },
+      {
+        name: 'Reusable Water Bottle',
+        description: 'Stainless steel vacuum insulated water bottle (500ml).',
+        pointsRequired: 200,
+        stock: 50,
+        category: 'accessories',
+        image: 'https://images.unsplash.com/photo-1602117562507-60afba820a40?auto=format&fit=crop&q=80&w=400',
+      },
+      {
+        name: 'Canvas Tote Bag',
+        description: 'Durable organic cotton tote bag for plastic-free shopping.',
+        pointsRequired: 80,
+        stock: 150,
+        category: 'other',
+        image: 'https://images.unsplash.com/photo-1544816153-1215aca8aa37?auto=format&fit=crop&q=80&w=400',
+      },
+      {
+        name: 'Recycled Paper Notebook',
+        description: 'Hardcover notebook made from 100% recycled paper.',
+        pointsRequired: 120,
+        stock: 80,
+        category: 'stationery',
+        image: 'https://images.unsplash.com/photo-1531346878377-a5ec20888f23?auto=format&fit=crop&q=80&w=400',
+      },
+      {
+        name: 'BPA-Free Lunch Box',
+        description: 'Eco-friendly, microwave safe lunch box made from wheat straw.',
+        pointsRequired: 150,
+        stock: 60,
+        category: 'home',
+        image: 'https://images.unsplash.com/photo-1596484552834-6a58f850e0a1?auto=format&fit=crop&q=80&w=400',
+      },
+    ]);
+    console.log(`🛒 Seeded ${storeItems.length} store items`);
 
     console.log('\n✅ Database seeded successfully!');
     console.log('─────────────────────────────');
