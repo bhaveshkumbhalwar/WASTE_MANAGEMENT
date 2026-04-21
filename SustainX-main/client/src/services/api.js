@@ -1,10 +1,11 @@
 import axios from 'axios';
 
+// ✅ Use Vite environment variable
 const API = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: `${import.meta.env.VITE_API_URL}/api`,
 });
 
-// Attach token to every request
+// ✅ Attach token to every request
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem('wms_token');
   if (token) {
@@ -13,27 +14,34 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
-// Auth
+// ================= AUTH =================
 export const loginUser = (data) => {
-  console.log("Login API:", `http://localhost:5000/api/auth/login`);
+  console.log("Login API:", `${import.meta.env.VITE_API_URL}/api/auth/login`);
   return API.post('/auth/login', data);
 };
+
 export const registerUser = (data) => API.post('/auth/register', data);
 export const getMe = () => API.get('/auth/me');
 
-// Users
-export const getUsers = (role) => API.get('/users', { params: role ? { role } : {} });
+// ================= USERS =================
+export const getUsers = (role) =>
+  API.get('/users', { params: role ? { role } : {} });
+
 export const getUserById = (id) => API.get(`/users/${id}`);
 export const createUser = (data) => API.post('/users', data);
 export const updateUser = (id, data) => API.put(`/users/${id}`, data);
-export const changePassword = (id, data) => API.put(`/users/${id}/password`, data);
+export const changePassword = (id, data) =>
+  API.put(`/users/${id}/password`, data);
 export const deleteUserApi = (id) => API.delete(`/users/${id}`);
 
-// Complaints
-export const getComplaints = (params) => API.get('/complaints', { params });
-export const getComplaintById = (id) => API.get(`/complaints/${id}`);
+// ================= COMPLAINTS =================
+export const getComplaints = (params) =>
+  API.get('/complaints', { params });
+
+export const getComplaintById = (id) =>
+  API.get(`/complaints/${id}`);
+
 export const submitComplaint = (data) => {
-  // If data is FormData (with image), let browser set Content-Type with boundary
   if (data instanceof FormData) {
     return API.post('/complaints', data, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -41,23 +49,38 @@ export const submitComplaint = (data) => {
   }
   return API.post('/complaints', data);
 };
-export const updateComplaintStatus = (id, data) => API.put(`/complaints/${id}/status`, data);
 
-// Rewards
-export const getRewards = (params) => API.get('/rewards', { params });
-export const addReward = (data) => API.post('/rewards', data);
+export const updateComplaintStatus = (id, data) =>
+  API.put(`/complaints/${id}/status`, data);
 
-// Stats
-export const getDashboardStats = () => API.get('/stats/dashboard');
+// ================= REWARDS =================
+export const getRewards = (params) =>
+  API.get('/rewards', { params });
 
-// Store
+export const addReward = (data) =>
+  API.post('/rewards', data);
+
+// ================= STATS =================
+export const getDashboardStats = () =>
+  API.get('/stats/dashboard');
+
+// ================= STORE =================
 export const getStoreItems = () => API.get('/store');
-export const redeemStoreItem = (itemId) => API.post('/store/redeem', { itemId });
 
-// Orders
-export const getOrders = (params) => API.get('/orders', { params });
-export const getOrderById = (id) => API.get(`/orders/${id}`);
-export const updateOrderStatus = (id, data) => API.put(`/orders/${id}`, data);
-export const assignOrderApi = (id) => API.post(`/orders/assign/${id}`);
+export const redeemStoreItem = (itemId) =>
+  API.post('/store/redeem', { itemId });
+
+// ================= ORDERS =================
+export const getOrders = (params) =>
+  API.get('/orders', { params });
+
+export const getOrderById = (id) =>
+  API.get(`/orders/${id}`);
+
+export const updateOrderStatus = (id, data) =>
+  API.put(`/orders/${id}`, data);
+
+export const assignOrderApi = (id) =>
+  API.post(`/orders/assign/${id}`);
 
 export default API;
