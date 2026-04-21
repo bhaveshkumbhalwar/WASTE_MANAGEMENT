@@ -24,6 +24,7 @@ const seedDB = async () => {
         name: 'Alex Johnson',
         email: 'alex.johnson@campus.edu',
         dept: 'Computer Science',
+        block: 'A',
         rewardPoints: 120,
       },
       {
@@ -43,6 +44,7 @@ const seedDB = async () => {
         name: 'Dr. Priya Singh',
         email: 'admin@campus.edu',
         dept: 'Administration',
+        block: 'A',
         rewardPoints: 0,
       },
     ]);
