@@ -7,8 +7,8 @@
 /* ── Theme Tokens ───────────────────────────────────────────── */
 :root {
   /* Brand palette */
-  --clr-green: #91D06C;
-  --clr-green-dark: #6ab847;
+  --clr-green: #7BB35B;
+  --clr-green-dark: #5A8D3D;
   --clr-green-glow: rgba(145, 208, 108, .25);
   --clr-blue: #4C8CE4;
   --clr-blue-dark: #3370c8;
@@ -35,8 +35,8 @@
 
   /* Light theme text */
   --txt-primary: #1A2B1A;
-  --txt-secondary: #4A6045;
-  --txt-muted: #7A9070;
+  --txt-secondary: #3A4B36;
+  --txt-muted: #52664A;
   --txt-on-dark: #EEF5EC;
   --txt-on-green: #1A3A10;
 
@@ -103,7 +103,7 @@
 
   --txt-primary: #DFF0D8;
   --txt-secondary: #9DC49A;
-  --txt-muted: #5F7A5C;
+  --txt-muted: #8AA080;
   --txt-on-dark: #C9E6C4;
 
   --border: rgba(255, 255, 255, .07);
@@ -2044,41 +2044,76 @@ tbody td {
 
 /* ── Print Styles ── */
 @media print {
-  body * {
+  /* Hide everything by default */
+  body {
     visibility: hidden !important;
+    background: #fff !important;
   }
 
+  /* Show only the open modal and its children */
   .modal-overlay.open,
   .modal-overlay.open .modal,
-  .modal-overlay.open .modal *,
-  .receipt-container,
-  .receipt-container * {
+  .modal-overlay.open .modal * {
     visibility: visible !important;
   }
 
+  /* Position the modal overlay to fill the print page */
   .modal-overlay.open {
     position: absolute !important;
     top: 0 !important;
     left: 0 !important;
     width: 100% !important;
+    height: auto !important;
+    background: #fff !important;
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    z-index: 9999 !important;
+  }
+
+  /* Refine the modal container for printing */
+  .modal-overlay.open .modal {
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 2rem !important;
     background: #fff !important;
   }
 
-  .modal-overlay.open .modal {
-    box-shadow: none !important;
-    border: none !important;
-    max-width: 100% !important;
-    width: 100% !important;
-    margin: 0 !important;
-  }
-
+  /* Hide UI elements that shouldn't be printed */
   .modal-close,
-  .btn {
-    display: none !important;
-  }
-
+  .btn,
+  .copy-btn,
+  .order-status-tracker,
+  .verification-box,
+  .qr-container,
   .receipt-container .btn {
     display: none !important;
+  }
+
+  /* Heading for printed receipts (used in some views) */
+  .receipt-heading {
+    display: block !important;
+    text-align: center !important;
+    border-bottom: 2px solid #000 !important;
+    padding-bottom: 1rem !important;
+    margin-bottom: 1.5rem !important;
+  }
+
+  /* General print-only class */
+  .print-only {
+    display: block !important;
+  }
+
+  /* Force background colors and colors to print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
 
@@ -2301,21 +2336,6 @@ tbody td {
 .card-lift:hover {
   transform: translateY(-5px);
   box-shadow: var(--shadow-lg);
-}
-
-/* ── Print Receipt Styles ── */
-@media print {
-  body * { visibility: hidden !important; }
-  .modal-overlay.open, .modal-overlay.open .modal, .modal-overlay.open .modal * {
-    visibility: visible !important;
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-  }
-  .modal { box-shadow: none !important; width: 100% !important; max-width: 100% !important; }
-  .modal-close, .btn, .copy-btn, .order-status-tracker, .verification-box, .qr-container { display: none !important; }
-  .receipt-heading { display: block !important; text-align: center; border-bottom: 2px solid #000; padding-bottom: 1rem; margin-bottom: 1.5rem; }
-  .print-only { display: block !important; }
 }
 
 .print-only { display: none; }
