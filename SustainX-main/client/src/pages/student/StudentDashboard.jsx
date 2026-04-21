@@ -660,7 +660,7 @@ export default function StudentDashboard() {
                       </div>
                     </div>
                     
-                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 1fr) 250px 150px', gap: '1.5rem', alignItems: 'start', marginBottom: '1.5rem' }}>
+                    <div className="order-details-grid">
                       {/* Product & Location */}
                       <div>
                         <div style={{ marginBottom: '.8rem' }}>

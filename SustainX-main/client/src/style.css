@@ -91,6 +91,13 @@
 
 @media (max-width: 640px) {
   .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+  .grid-2-mobile { grid-template-columns: 1fr; }
+}
+
+.grid-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
 }
 
 [data-theme="dark"] {
@@ -517,8 +524,21 @@ tbody td {
 /* ── Stat Cards ───────────────────────────────────────────── */
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 1rem;
+}
+
+@media (max-width: 640px) {
+  .stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: .75rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .stat-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .stat-card {
@@ -810,6 +830,19 @@ tbody td {
   display: flex;
   align-items: center;
   gap: .75rem;
+}
+
+@media (max-width: 500px) {
+  .topbar-actions span {
+    display: none;
+  }
+  .topbar h2 {
+    font-size: 1rem;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .page-content {
@@ -1445,6 +1478,32 @@ tbody td {
   align-items: center;
 }
 
+@media (max-width: 640px) {
+  .flex-mobile-stack {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+}
+
+.table-wrap table {
+  min-width: 600px;
+}
+
+@media (max-width: 640px) {
+  .table-wrap table {
+    min-width: 100%;
+  }
+  tbody td {
+    font-size: .82rem;
+    padding: .6rem .5rem;
+  }
+  thead th {
+    font-size: .7rem;
+    padding: .6rem .5rem;
+  }
+}
+
 .flex-gap {
   gap: .75rem;
 }
@@ -1830,6 +1889,23 @@ tbody td {
   align-items: center;
 }
 
+@media (max-width: 900px) {
+  .order-details-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .order-details-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    text-align: center;
+  }
+  .info-row {
+    justify-content: center;
+  }
+}
+
 .info-row {
   display: flex;
   gap: .6rem;
@@ -1909,6 +1985,20 @@ tbody td {
   font-weight: 700;
   color: var(--txt-muted);
   text-transform: uppercase;
+  text-align: center;
+}
+
+@media (max-width: 500px) {
+  .step-label {
+    font-size: .6rem;
+    display: none; /* Hide labels on very small screens to prevent overlap */
+  }
+  .progress-step.active .step-label {
+    display: block; /* Show only the active one */
+    position: absolute;
+    top: 40px;
+    width: 100px;
+  }
 }
 
 .step-line {
@@ -2215,6 +2305,19 @@ tbody td {
 .status-step.active .step-text,
 .status-step.completed .step-text {
   color: var(--txt-main);
+}
+
+@media (max-width: 500px) {
+  .step-text {
+    display: none;
+  }
+  .status-step.active .step-text {
+    display: block;
+    position: absolute;
+    top: 35px;
+    width: 80px;
+    text-align: center;
+  }
 }
 
 /* ── QR & Copy UI ── */

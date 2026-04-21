@@ -614,7 +614,7 @@ export default function CollectorDashboard() {
           {section === 'sec-awareness' && (
             <section className="page-section active">
               <div className="section-title"><div className="section-title-bar"></div><h2>🌱 Waste Management Importance</h2></div>
-              <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))' }}>
+              <div className="grid-details">
                 {[
                   { icon: '🌍', title: 'Environmental Impact', text: 'Proper waste collection prevents soil and water contamination.', color: 'var(--clr-green)' },
                   { icon: '🏥', title: 'Public Health Protection', text: 'Unmanaged waste attracts pests and spreads diseases.', color: 'var(--clr-blue)' },
@@ -685,7 +685,7 @@ export default function CollectorDashboard() {
             )}
 
             {/* Complaint Details Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '.8rem', marginBottom: '1rem', fontSize: '.88rem' }}>
+            <div className="grid-2" style={{ gap: '.8rem', marginBottom: '1rem', fontSize: '.88rem' }}>
               <div>
                 <div className="info-label">📋 Complaint ID</div>
                 <div style={{ fontWeight: 700, color: 'var(--clr-blue)' }}>{selectedComplaint.complaintId}</div>
