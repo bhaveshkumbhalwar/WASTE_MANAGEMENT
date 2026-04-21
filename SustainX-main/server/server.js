@@ -20,9 +20,20 @@ const app = express();
 // ✅ Connect to MongoDB
 connectDB();
 
-// ✅ CORS configuration
+// ✅ CORS FIX (IMPORTANT)
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://sustainx-frontend-7xw0.onrender.com"
+];
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || "*", // set your frontend URL in env
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true
 }));
 
@@ -43,12 +54,12 @@ app.use('/api/store', storeRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/iot', iotRoutes);
 
-// ✅ Root route (IMPORTANT for Render)
+// ✅ Root route (Render health check)
 app.get('/', (req, res) => {
   res.send('🚀 SustainX Backend Running Successfully');
 });
 
-// ✅ API root check
+// ✅ API check
 app.get('/api', (req, res) => {
   res.send('🚀 SustainX API is running successfully...');
 });
@@ -80,7 +91,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ✅ Start server (Render-compatible)
+// ✅ Start server (Render compatible)
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
