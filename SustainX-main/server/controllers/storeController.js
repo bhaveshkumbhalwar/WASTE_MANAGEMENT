@@ -3,10 +3,21 @@ const Order = require('../models/Order');
 const User = require('../models/User');
 const Reward = require('../models/Reward');
 
+const OrderLog = require('../models/OrderLog');
+
 // ── Generate sequential order ID ──
 const generateOrderId = async () => {
   const count = await Order.countDocuments();
   return 'ORD-' + String(count + 1).padStart(4, '0');
+};
+
+// HELPER: Audit logging
+const createAuditLog = async (orderId, action, userId, details = '') => {
+  try {
+    await OrderLog.create({ orderId, action, performedBy: userId, details });
+  } catch (err) {
+    console.error(`❌ [AUDIT] Failed to log ${action} for ${orderId}:`, err.message);
+  }
 };
 
 // ──────────────────────────────────────────────────────────────
@@ -20,7 +31,8 @@ const getStoreItems = async (req, res) => {
     const items = await StoreItem.find({ isActive: true }).sort({ pointsRequired: 1 });
     res.json(items);
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    console.error("ERROR:", err);
+    res.status(500).json({ message: err.message });
   }
 };
 
@@ -45,7 +57,8 @@ const createStoreItem = async (req, res) => {
 
     res.status(201).json(item);
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    console.error("ERROR:", err);
+    res.status(500).json({ message: err.message });
   }
 };
 
@@ -57,6 +70,7 @@ const createStoreItem = async (req, res) => {
 // @route   POST /api/store/redeem
 const redeemItem = async (req, res) => {
   try {
+    console.log("USER:", req.user);
     const { itemId } = req.body;
 
     if (!itemId) {
@@ -75,13 +89,20 @@ const redeemItem = async (req, res) => {
     }
 
     // 3. Fetch fresh user (points may have changed)
-    const user = await User.findOne({ userId: req.user.userId });
+    const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
     }
 
+    // NEW: Check for block assignment BEFORE saving (prevents validation crash)
+    if (!user.block) {
+      return res.status(400).json({
+        message: 'Your account lacks a Campus Block assignment. Please update your profile or contact administrator before redeeming.',
+      });
+    }
+
     // 4. Check points
-    if ((user.rewardPoints || 0) < item.pointsRequired) {
+    if (user.rewardPoints < item.pointsRequired) {
       return res.status(400).json({
         message: `Insufficient points. Need ${item.pointsRequired}, you have ${user.rewardPoints || 0}.`,
       });
@@ -95,9 +116,6 @@ const redeemItem = async (req, res) => {
     item.stock -= 1;
     await item.save();
 
-    // 7. Create order
-    const orderId = await generateOrderId();
-
     // ── Generate Unique 6-Char Pickup Code ──
     const generateCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
     let code;
@@ -107,24 +125,35 @@ const redeemItem = async (req, res) => {
       exists = await Order.findOne({ pickupCode: code });
     }
 
+    // ── Generate Expiration Date (24h) ──
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24);
+
+    // 8. Create order
+    const orderId = await generateOrderId();
+
     const order = await Order.create({
       orderId,
       userId: user.userId,
       userName: user.name,
+      user: user._id, // Relation using _id
+      block: user.block,
       item: item._id,
       itemName: item.name,
-      pointsSpent: item.pointsRequired,
+      pointsUsed: item.pointsRequired,
       pickupCode: code,
+      expiresAt,
     });
 
-    console.log(`🛒 [STORE] ${user.userId} redeemed "${item.name}" for ${item.pointsRequired} pts → Order ${orderId}`);
+    console.log(`🛒 [ORDER] Created: ${order.orderId} | Block: ${order.block} | User: ${user.userId}`);
 
     res.status(201).json({
       order,
       remainingPoints: user.rewardPoints,
     });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    console.error("REDEEM ERROR:", err);
+    res.status(500).json({ message: err.message });
   }
 };
 
@@ -143,18 +172,28 @@ const getOrders = async (req, res) => {
       query.userId = req.user.userId;
     }
 
+    // Collectors: see unassigned orders OR orders assigned specifically to me (NO block filter)
+    if (req.user.role === 'collector') {
+      query.$or = [
+        { assignedTo: null },
+        { assignedTo: req.user._id }
+      ];
+    }
+
     // Optional status filter
     if (req.query.status) {
       query.status = req.query.status;
     }
 
     const orders = await Order.find(query)
+      .populate('user', 'name email userId')
       .populate('item', 'name image pointsRequired')
       .sort({ createdAt: -1 });
 
     res.json(orders);
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    console.error("ERROR:", err);
+    res.status(500).json({ message: err.message });
   }
 };
 
@@ -171,6 +210,44 @@ const updateOrderStatus = async (req, res) => {
 
     const order = await Order.findOne({ orderId: req.params.id.toUpperCase() });
     if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    // ── Security Check (Collector) ──
+    if (req.user.role === 'collector' && order.block !== req.user.block) {
+      console.warn(`🚫 [ACCESS DENIED] Collector ${req.user.userId} tried to update Order ${order.orderId} (Block ${order.block})`);
+      return res.status(403).json({ message: 'Access denied: cannot update orders from another block' });
+    }
+
+    // ── Expiration & Lockout Checks ──
+    if (order.status !== 'delivered') {
+      if (order.expiresAt && new Date() > order.expiresAt) {
+        return res.status(400).json({ message: 'This pickup order has expired. Please contact admin for a reset.' });
+      }
+      if (order.failedAttempts >= 3) {
+        await createAuditLog(order.orderId, 'locked', req.user.userId, 'Too many failed attempts');
+        return res.status(400).json({ message: 'Order is locked due to multiple failed verification attempts.' });
+      }
+    }
+
+    // ── Delivery Verification Step ──
+    if (status === 'delivered') {
+      const { verificationCode } = req.body;
+      if (!verificationCode) {
+        return res.status(400).json({ message: 'Pickup code is required for delivery confirmation.' });
+      }
+      
+      if (verificationCode.toUpperCase() !== order.pickupCode.toUpperCase()) {
+        order.failedAttempts += 1;
+        await order.save();
+        await createAuditLog(order.orderId, 'failed_verification', req.user.userId, `Attempt ${order.failedAttempts}`);
+        return res.status(400).json({ 
+          message: `Invalid pickup code. ${3 - order.failedAttempts} attempts remaining.`,
+          attemptsRemaining: 3 - order.failedAttempts
+        });
+      }
+      // Success!
+      order.deliveredAt = new Date();
+      await createAuditLog(order.orderId, 'delivered', req.user.userId);
+    }
 
     // ── Strict Status Transition Validation ──
     const validTransitions = {
@@ -201,6 +278,7 @@ const updateOrderStatus = async (req, res) => {
         // Create Reward Log entry
         await Reward.create({
           userId: req.user.userId,
+          user: req.user._id, // Relation using _id
           activity: `Delivered Order ${order.orderId}`,
           points: 20,
         });
@@ -211,9 +289,79 @@ const updateOrderStatus = async (req, res) => {
     await order.save();
     res.json(order);
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    console.error("ERROR:", err);
+    res.status(500).json({ message: err.message });
   }
 };
 
 
-module.exports = { getStoreItems, createStoreItem, redeemItem, getOrders, updateOrderStatus };
+// @desc    Get order by ID (role-enforced)
+// @route   GET /api/orders/:id
+const getOrderById = async (req, res) => {
+  try {
+    const order = await Order.findOne({
+      orderId: req.params.id.toUpperCase(),
+    }).populate('user', 'userId name email');
+
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    // Security: collector/admin can see, student only if it's their own
+    if (req.user.role === 'student' && order.userId !== req.user.userId) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    if (req.user.role === 'collector' && order.block !== req.user.block) {
+      console.warn(`🚫 [ACCESS DENIED] Collector ${req.user.userId} tried to view Order ${order.orderId} (Block ${order.block})`);
+      return res.status(403).json({ message: 'Access denied: order belongs to another block' });
+    }
+
+    // Audit Log: Viewed
+    await createAuditLog(order.orderId, 'viewed', req.user.userId);
+
+    res.json(order);
+  } catch (err) {
+    console.error("ERROR:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const assignOrder = async (req, res) => {
+  try {
+    console.log("--- ASSIGN DEBUG ---");
+    console.log("Order ID from Params:", req.params.id);
+    console.log("Collector ID from Auth:", req.user._id);
+
+    const order = await Order.findById(req.params.id);
+    
+    if (!order) {
+      console.error("❌ Order NOT found by _id");
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    console.log("Current order.assignedTo:", order.assignedTo);
+
+    // 1. Concurrency Check: Ensure not already assigned
+    if (order.assignedTo) {
+      return res.status(400).json({ message: `Order already assigned to ${order.assignedCollectorName}` });
+    }
+
+    // 2. Perform Assignment
+    order.assignedTo = req.user._id;
+    order.assignedCollectorName = req.user.name;
+    
+    // Auto-approve unassigned orders when taken
+    if (order.status === 'pending') {
+      order.status = 'approved';
+    }
+
+    await order.save();
+    
+    console.log(`🤝 [SUCCESS] Order ${order.orderId} taken by Collector ${req.user.userId}`);
+    res.json(order);
+  } catch (err) {
+    console.error("ASSIGN ERROR:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { getStoreItems, createStoreItem, redeemItem, getOrders, updateOrderStatus, getOrderById, assignOrder };

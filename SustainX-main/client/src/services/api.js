@@ -56,6 +56,8 @@ export const redeemStoreItem = (itemId) => API.post('/store/redeem', { itemId })
 
 // Orders
 export const getOrders = (params) => API.get('/orders', { params });
+export const getOrderById = (id) => API.get(`/orders/${id}`);
 export const updateOrderStatus = (id, data) => API.put(`/orders/${id}`, data);
+export const assignOrderApi = (id) => API.post(`/orders/assign/${id}`);
 
 export default API;

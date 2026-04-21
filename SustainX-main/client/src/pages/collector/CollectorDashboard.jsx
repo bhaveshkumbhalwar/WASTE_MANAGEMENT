@@ -17,7 +17,9 @@ import {
   getStoreItems,
   redeemStoreItem,
   getOrders,
+  getOrderById,
   updateOrderStatus,
+  assignOrderApi,
 } from '../../services/api';
 
 const NAV_ITEMS = [
@@ -68,6 +70,12 @@ export default function CollectorDashboard() {
   // Store orders (to manage)
   const [storeOrders, setStoreOrders] = useState([]);
   const [orderFilter, setOrderFilter] = useState('');
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [orderModalOpen, setOrderModalOpen] = useState(false);
+  const [isOrderLoading, setIsOrderLoading] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [orderCache, setOrderCache] = useState({});
 
   const loadStats = useCallback(async () => {
     try {
@@ -215,20 +223,68 @@ export default function CollectorDashboard() {
     }
   };
 
-  const handleOrderStatus = async (orderId, newStatus) => {
+  const handleOrderStatus = async (orderId, newStatus, code) => {
     try {
-      const res = await updateOrderStatus(orderId, { status: newStatus });
-      showToast(`Order ${orderId} → ${newStatus} ✅`);
-      
-      // If delivered, show reward message
-      if (newStatus === 'delivered' && res.data.rewardGiven) {
-        showToast('🚚 Delivery bonus: +20 reward points!', 'info');
+      const payload = { status: newStatus };
+      if (newStatus === 'delivered') {
+        if (!code) { showToast('Please enter the pickup code.', 'warning'); return; }
+        payload.verificationCode = code;
       }
 
+      const res = await updateOrderStatus(orderId, payload);
+      
+      if (newStatus === 'delivered') {
+        setIsSuccess(true);
+        showToast('Order delivered successfully! ✅', 'success');
+        if (res.data.rewardGiven) {
+          setTimeout(() => showToast('🚚 Delivery bonus: +20 reward points!', 'info'), 1500);
+        }
+      } else {
+        showToast(`Order ${orderId} → ${newStatus} ✅`);
+      }
+
+      setVerificationCode('');
       loadStoreOrders();
-      loadProfile(); // Refresh points
+      loadProfile();
+      
+      // Update cache
+      setOrderCache(prev => ({ ...prev, [orderId]: res.data }));
+      setSelectedOrder(res.data);
     } catch (err) {
       showToast(err.response?.data?.message || 'Error updating order', 'error');
+    }
+  };
+
+  const handleTakeOrder = async (orderId) => {
+    try {
+      await assignOrderApi(orderId);
+      showToast(`Order ${orderId} assigned to you! 👍`);
+      loadStoreOrders();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Error taking order', 'error');
+    }
+  };
+
+  const handleViewDetails = async (id) => {
+    // Check cache first
+    if (orderCache[id]) {
+      setSelectedOrder(orderCache[id]);
+      setOrderModalOpen(true);
+      setIsSuccess(false);
+      return;
+    }
+
+    try {
+      setIsOrderLoading(true);
+      setIsSuccess(false);
+      const res = await getOrderById(id);
+      setSelectedOrder(res.data);
+      setOrderCache(prev => ({ ...prev, [id]: res.data }));
+      setOrderModalOpen(true);
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Error fetching details', 'error');
+    } finally {
+      setIsOrderLoading(false);
     }
   };
 
@@ -391,30 +447,56 @@ export default function CollectorDashboard() {
                   <thead><tr><th>Order ID</th><th>Student</th><th>Item</th><th>Points</th><th>Date</th><th>Status</th><th>Action</th></tr></thead>
                   <tbody>
                     {storeOrders.length === 0 ? (
-                      <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--txt-muted)' }}>No orders found.</td></tr>
+                      <tr>
+                        <td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: 'var(--txt-muted)' }}>
+                          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📦</div>
+                          <strong>No orders available for Block {user.block || 'your block'}.</strong>
+                          <p style={{ fontSize: '.85rem', marginTop: '.5rem' }}>Active redemptions from students in this block will appear here.</p>
+                        </td>
+                      </tr>
                     ) : storeOrders.map((o) => (
                       <tr key={o.orderId}>
-                        <td><span style={{ fontWeight: 700, color: 'var(--clr-blue)' }}>{o.orderId}</span></td>
+                        <td>
+                          <button 
+                            className="btn-link" 
+                            style={{ fontWeight: 700, color: 'var(--clr-blue)', border: 'none', background: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline' }}
+                            onClick={() => handleViewDetails(o.orderId)}
+                          >
+                            {o.orderId}
+                          </button>
+                        </td>
                         <td>
                           <div style={{ fontSize: '.85rem' }}>{o.userName}</div>
                           <div className="text-muted" style={{ fontSize: '.72rem' }}>{o.userId}</div>
                         </td>
-                        <td>{o.itemName}</td>
-                        <td><span style={{ fontWeight: 600, color: 'var(--clr-amber)' }}>⭐ {o.pointsSpent}</span></td>
-                        <td>{fmtDate(o.createdAt)}</td>
-                        <td><StatusBadge status={o.status === 'ready_for_pickup' ? 'ready' : o.status === 'approved' ? 'in-progress' : o.status === 'delivered' ? 'completed' : 'pending'} /></td>
+                        <td><span style={{ fontWeight: 600, color: 'var(--clr-amber)' }}>⭐ {o.pointsUsed}</span></td>
                         <td>
-                          {o.status === 'pending' && (
-                            <button className="btn btn-sm btn-blue" onClick={() => handleOrderStatus(o.orderId, 'approved')}>👍 Approve</button>
-                          )}
-                          {o.status === 'approved' && (
-                            <button className="btn btn-sm btn-amber" onClick={() => handleOrderStatus(o.orderId, 'ready_for_pickup')}>🎁 Ready for Pickup</button>
-                          )}
-                          {o.status === 'ready_for_pickup' && (
-                            <button className="btn btn-sm btn-primary" onClick={() => handleOrderStatus(o.orderId, 'delivered')}>🚚 Delivered</button>
-                          )}
-                          {o.status === 'delivered' && (
-                            <span className="text-muted" style={{ fontSize: '.8rem' }}>Claimed</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem' }}>
+                            <StatusBadge status={o.status === 'ready_for_pickup' ? 'ready' : o.status === 'approved' ? 'in-progress' : o.status === 'delivered' ? 'completed' : 'pending'} />
+                            {!o.assignedTo && <span className="badge badge-amber" style={{ fontSize: '.7rem' }}>🆕 Available</span>}
+                            {o.assignedTo === user._id && <span className="badge badge-done" style={{ fontSize: '.7rem' }}>🔒 Assigned to You</span>}
+                          </div>
+                        </td>
+                        <td>
+                          {!o.assignedTo ? (
+                            <button className="btn btn-sm btn-primary" onClick={() => handleTakeOrder(o._id)}>🤝 Take Order</button>
+                          ) : o.assignedTo === user._id ? (
+                            <div style={{ display: 'flex', gap: '.4rem' }}>
+                              {o.status === 'pending' && (
+                                <button className="btn btn-sm btn-blue" onClick={() => handleOrderStatus(o.orderId, 'approved')}>👍 Approve</button>
+                              )}
+                              {o.status === 'approved' && (
+                                <button className="btn btn-sm btn-amber" onClick={() => handleOrderStatus(o.orderId, 'ready_for_pickup')}>🎁 Ready for Pickup</button>
+                              )}
+                              {o.status === 'ready_for_pickup' && (
+                                <button className="btn btn-sm btn-primary" onClick={() => handleOrderStatus(o.orderId, 'delivered')}>🚚 Delivered</button>
+                              )}
+                              {o.status === 'delivered' && (
+                                <span className="text-muted" style={{ fontSize: '.8rem' }}>Claimed</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-muted" style={{ fontSize: '.8rem' }}>Assigned to other</span>
                           )}
                         </td>
                       </tr>
@@ -679,6 +761,171 @@ export default function CollectorDashboard() {
             </button>
           </>
         )}
+      </Modal>
+
+      {/* Order Detail Modal */}
+      <Modal 
+        id="order-detail-modal" 
+        isOpen={orderModalOpen} 
+        onClose={() => { setOrderModalOpen(false); setVerificationCode(''); setIsSuccess(false); }} 
+        title={isSuccess ? "🎉 Delivery Successful" : "📦 Order Details"}
+      >
+        {isOrderLoading ? (
+          <div style={{ padding: '1.5rem' }}>
+            <div className="skeleton skeleton-title" style={{ width: '40%', marginBottom: '2rem' }}></div>
+            <div className="skeleton skeleton-rect" style={{ marginBottom: '1.5rem' }}></div>
+            <div className="grid-2" style={{ gap: '1rem' }}>
+              <div className="skeleton skeleton-text"></div>
+              <div className="skeleton skeleton-text"></div>
+              <div className="skeleton skeleton-text"></div>
+              <div className="skeleton skeleton-text"></div>
+            </div>
+          </div>
+        ) : isSuccess ? (
+          <div className="delivery-success-wrapper">
+            <div className="success-checkmark">✓</div>
+            <h2>Well Done!</h2>
+            <p className="text-muted">Order <strong>{selectedOrder?.orderId}</strong> has been marked as delivered.</p>
+            <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem' }}>
+              <button className="btn btn-primary btn-full" onClick={() => window.print()}>🖨️ Print Receipt</button>
+              <button className="btn btn-ghost btn-full" onClick={() => setOrderModalOpen(false)}>Close</button>
+            </div>
+          </div>
+        ) : selectedOrder ? (
+          <div className="order-modal-content">
+            <div className="print-only receipt-heading">
+              <h1 style={{ color: 'var(--clr-green)' }}>SustainX Waste Management</h1>
+              <p>Official Delivery Receipt - {selectedOrder.orderId}</p>
+            </div>
+
+            {/* Status Tracker */}
+            <div className="order-status-tracker">
+              {['pending', 'approved', 'ready_for_pickup', 'delivered'].map((s, i) => {
+                const statuses = ['pending', 'approved', 'ready_for_pickup', 'delivered'];
+                const currentIdx = statuses.indexOf(selectedOrder.status);
+                const isCompleted = i < currentIdx || selectedOrder.status === 'delivered';
+                const isActive = selectedOrder.status === s;
+                return (
+                  <div key={s} className={`status-step ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}>
+                    <div className="step-dot">{isCompleted ? '✓' : i + 1}</div>
+                    <div className="step-text">{s.replace(/_/g, ' ')}</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'var(--bg-muted, rgba(0,0,0,.03))', borderRadius: '8px', gridColumn: '1 / -1' }}>
+                <div style={{ fontSize: '2.5rem' }}>📦</div>
+                <div>
+                  <div style={{ fontSize: '.75rem', fontWeight: 700, color: 'var(--txt-muted)', textTransform: 'uppercase' }}>Item Ordered</div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 800 }}>{selectedOrder.itemName}</div>
+                </div>
+              </div>
+              <div>
+                <div className="info-label">👤 Customer</div>
+                <div style={{ fontWeight: 700 }}>{selectedOrder.user?.name || 'Unknown'}</div>
+                <div style={{ fontSize: '.85rem', color: 'var(--txt-muted)' }}>{selectedOrder.user?.email || 'N/A'}</div>
+              </div>
+              <div>
+                <div className="info-label">🆔 User ID</div>
+                <div style={{ fontWeight: 700, color: 'var(--clr-navy)' }}>{selectedOrder.user?.userId || selectedOrder.userId}</div>
+              </div>
+            </div>
+
+            <div style={{ borderBottom: '1px solid var(--border)', marginBottom: '1.5rem' }}></div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+              <div>
+                <div className="info-label">📍 Pickup Location</div>
+                <div style={{ fontWeight: 600 }}>{selectedOrder.pickupLocation}</div>
+              </div>
+              <div>
+                <div className="info-label">🕒 Pickup Time</div>
+                <div style={{ fontWeight: 600 }}>{selectedOrder.pickupTime}</div>
+              </div>
+            </div>
+
+            {selectedOrder.status !== 'delivered' && (
+              <div style={{ textAlign: 'center', padding: '1.5rem', background: 'var(--bg-sidebar)', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '1.5rem' }}>
+                <div className="info-label" style={{ marginBottom: '.5rem' }}>🔐 Pickup Code</div>
+                <div className="pickup-code">{selectedOrder.pickupCode || '—'}</div>
+                <br />
+                <button 
+                  className="copy-btn" 
+                  onClick={() => {
+                    navigator.clipboard.writeText(selectedOrder.pickupCode);
+                    showToast('Code copied to clipboard!', 'info');
+                  }}
+                >
+                  📋 Copy Code
+                </button>
+                
+                <div className="qr-container">
+                  <img 
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${selectedOrder.pickupCode}`} 
+                    alt="Order QR Code" 
+                    style={{ display: 'block', width: '120px', height: '120px' }}
+                  />
+                </div>
+                <p style={{ fontSize: '.75rem', color: 'var(--txt-muted)' }}>
+                  Expires: {selectedOrder.expiresAt ? new Date(selectedOrder.expiresAt).toLocaleString() : 'N/A'}
+                </p>
+              </div>
+            )}
+
+            {/* Delivery Verification Input */}
+            {selectedOrder.status === 'ready_for_pickup' && (
+              <div className="verification-box">
+                <div style={{ fontWeight: 700, color: 'var(--clr-amber)', fontSize: '.9rem' }}>⚠️ Delivery Verification Required</div>
+                <p className="text-muted" style={{ fontSize: '.8rem' }}>Enter the student's pickup code. <strong>{3 - (selectedOrder.failedAttempts || 0)} attempts left.</strong></p>
+                <input 
+                  type="text" 
+                  className="verification-input" 
+                  placeholder="X7K9P2"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value.toUpperCase())}
+                  maxLength={6}
+                  disabled={selectedOrder.failedAttempts >= 3}
+                />
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              {selectedOrder.status === 'ready_for_pickup' && (
+                <button 
+                  className={`btn btn-primary btn-full ${selectedOrder.failedAttempts >= 3 ? 'btn-disabled' : ''}`}
+                  disabled={selectedOrder.failedAttempts >= 3}
+                  onClick={() => handleOrderStatus(selectedOrder.orderId, 'delivered', verificationCode)}
+                >
+                  🚚 Confirm & Deliver
+                </button>
+              )}
+              {selectedOrder.status === 'approved' && (
+                <button 
+                  className="btn btn-amber btn-full" 
+                  onClick={() => handleOrderStatus(selectedOrder.orderId, 'ready_for_pickup')}
+                >
+                  🎁 Ready for Pickup
+                </button>
+              )}
+              {selectedOrder.status === 'pending' && (
+                <button 
+                  className="btn btn-blue btn-full" 
+                  onClick={() => handleOrderStatus(selectedOrder.orderId, 'approved')}
+                >
+                  👍 Approve Order
+                </button>
+              )}
+              <div style={{ display: 'flex', gap: '.5rem', flex: 1 }}>
+                <button className="btn btn-ghost btn-full" onClick={() => setOrderModalOpen(false)}>Close</button>
+                {selectedOrder.status === 'delivered' && (
+                  <button className="btn btn-ghost" onClick={() => window.print()}>🖨️ Receipt</button>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </Modal>
     </div>
   );

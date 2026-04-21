@@ -38,18 +38,18 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
-    // block is required for collectors, optional for others
+    // block is required for students and collectors
     block: {
       type: String,
       enum: ['A', 'B', 'C', 'D', 'E'],
       default: null,
       validate: {
         validator: function (v) {
-          // If role is collector, block must be set
-          if (this.role === 'collector') return !!v;
+          // If role is collector or student, block must be set
+          if (['collector', 'student'].includes(this.role)) return !!v;
           return true;
         },
-        message: 'Block is required for collectors',
+        message: 'Block is required for students and collectors',
       },
     },
     avatar: {

@@ -37,9 +37,9 @@ const createUser = async (req, res) => {
       return res.status(400).json({ message: 'Please fill all required fields (userId, name, email, password)' });
     }
 
-    // Validate block for collectors — required
-    if (role === 'collector' && !block) {
-      return res.status(400).json({ message: 'Block (A–E) is required when creating a collector' });
+    // Validate block for students and collectors — required by schema
+    if (['student', 'collector'].includes(role) && !block) {
+      return res.status(400).json({ message: `Block (A–E) is required when creating a ${role}` });
     }
 
     // Only userId must be unique — email can be shared across collectors
@@ -57,8 +57,8 @@ const createUser = async (req, res) => {
       dept: dept || '',
     };
 
-    // Add block for collector role (already validated above)
-    if (role === 'collector' && block) {
+    // Add block for student/collector roles (already validated above)
+    if (['student', 'collector'].includes(role) && block) {
       userData.block = block.toUpperCase();
     }
 

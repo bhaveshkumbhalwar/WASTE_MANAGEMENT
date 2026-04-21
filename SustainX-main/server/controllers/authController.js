@@ -56,10 +56,10 @@ const login = async (req, res) => {
 // @route   POST /api/auth/register
 const register = async (req, res) => {
   try {
-    const { name, email, dept, password } = req.body;
+    const { name, email, dept, password, block } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: 'Please fill all required fields' });
+    if (!name || !email || !password || !block) {
+      return res.status(400).json({ message: 'Please fill all required fields including Block' });
     }
 
     // Generate userId from email prefix
@@ -83,6 +83,7 @@ const register = async (req, res) => {
       name,
       email: email.toLowerCase(),
       dept: dept || '',
+      block,
     });
 
     res.status(201).json({

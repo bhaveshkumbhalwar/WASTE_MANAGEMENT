@@ -39,7 +39,11 @@ export default function AdminDashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Stats
-  const [stats, setStats] = useState({ total: 0, pending: 0, progress: 0, done: 0, students: 0, collectors: 0 });
+  const [stats, setStats] = useState({ 
+    total: 0, pending: 0, progress: 0, done: 0, 
+    students: 0, collectors: 0,
+    orderAnalytics: { total: 0, delivered: 0, completionRate: 0, failedAttempts: 0, blockPerformance: [] }
+  });
   const [allComplaints, setAllComplaints] = useState([]);
 
   // Users (students)
@@ -126,10 +130,10 @@ export default function AdminDashboard() {
     try {
       const res = await getRewards();
       const userRes = await getUsers();
-      const userMap = {};
-      userRes.data.forEach((u) => (userMap[u.userId] = u.name));
+      const stuMap = {};
+      userRes.data.forEach((u) => (stuMap[u.userId] = u.name));
       setAllRewards(
-        res.data.map((r) => ({ ...r, userName: userMap[r.studentId] || r.studentId }))
+        res.data.map((r) => ({ ...r, userName: stuMap[r.userId] || r.userId }))
       );
     } catch { /* ignore */ }
   }, []);
@@ -302,10 +306,41 @@ export default function AdminDashboard() {
                 <StatCard icon="⏳" value={stats.pending} label="Pending" borderColor="var(--clr-amber)" />
                 <StatCard icon="🔄" value={stats.progress} label="In Progress" borderColor="var(--clr-blue)" />
                 <StatCard icon="✅" value={stats.done} label="Resolved" borderColor="var(--clr-green)" />
-                <StatCard icon="🛍️" value={allOrders.length} label="Store Sales" borderColor="var(--clr-brown)" />
-                <StatCard icon="🎁" value={allOrders.filter(o => o.status === 'ready_for_pickup').length} label="Pending Pickups" borderColor="var(--clr-amber)" />
+                <StatCard icon="🛍️" value={stats.orderAnalytics?.total || 0} label="Store Sales" borderColor="var(--clr-brown)" />
+                <StatCard icon="📈" value={`${stats.orderAnalytics?.completionRate || 0}%`} label="Completion Rate" borderColor="var(--clr-green)" />
+                <StatCard icon="⚠️" value={stats.orderAnalytics?.failedAttempts || 0} label="Auth Failures" borderColor="var(--clr-red)" />
                 <StatCard icon="🎓" value={stats.students} label="Students" borderColor="var(--clr-navy)" />
                 <StatCard icon="🚛" value={stats.collectors} label="Collectors" borderColor="var(--clr-green)" />
+              </div>
+              
+              <div className="grid-2 mb-3">
+                <div className="card">
+                  <div className="section-title"><div className="section-title-bar"></div><h3>Fulfillment by Block</h3></div>
+                  <div className="table-wrap">
+                    <table style={{ fontSize: '.85rem' }}>
+                      <thead><tr><th>Campus Block</th><th>Successful Deliveries</th></tr></thead>
+                      <tbody>
+                        {['A', 'B', 'C', 'D', 'E'].map(block => {
+                          const performance = stats.orderAnalytics?.blockPerformance?.find(p => p._id === block);
+                          return (
+                            <tr key={block}>
+                              <td><strong>Block {block}</strong></td>
+                              <td><span className="badge badge-success">{performance?.count || 0} Delivered</span></td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'center', padding: '2rem' }}>
+                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🛡️</div>
+                  <h3>Security Health</h3>
+                  <p className="text-muted" style={{ fontSize: '.9rem' }}>
+                    Marketplace security is currently <strong>Optimal</strong>. 
+                    {stats.orderAnalytics?.failedAttempts > 10 ? ' High volume of auth failures detected.' : ' Minimal failed verification attempts.'}
+                  </p>
+                </div>
               </div>
               <div className="card">
                 <div className="section-title"><div className="section-title-bar"></div><h2>All Complaints</h2></div>
@@ -363,7 +398,7 @@ export default function AdminDashboard() {
                       <tr key={o.orderId}>
                         <td><strong style={{ color: 'var(--clr-blue)' }}>{o.orderId}</strong><div className="text-muted" style={{ fontSize: '.7rem' }}>{fmtDate(o.createdAt)}</div></td>
                         <td>{o.userName}<div className="text-muted" style={{ fontSize: '.7rem' }}>{o.userId}</div></td>
-                        <td>{o.itemName}<div className="text-muted" style={{ fontSize: '.7rem' }}>⭐ {o.pointsSpent} pts</div></td>
+                        <td>{o.itemName}<div className="text-muted" style={{ fontSize: '.7rem' }}>⭐ {o.pointsUsed} pts</div></td>
                         <td style={{ minWidth: 200 }}>
                           <div className="status-progress-container" style={{ margin: 0, paddingTop: '.5rem', transform: 'scale(0.85)', transformOrigin: 'left' }}>
                             {['pending', 'approved', 'ready_for_pickup', 'delivered'].map((s, idx, steps) => {

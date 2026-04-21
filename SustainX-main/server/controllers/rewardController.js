@@ -11,7 +11,8 @@ const getRewards = async (req, res) => {
     const rewards = await Reward.find(filter).sort({ date: -1 });
     res.json(rewards);
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    console.error("ERROR:", err);
+    res.status(500).json({ message: err.message });
   }
 };
 
@@ -39,6 +40,7 @@ const addReward = async (req, res) => {
 
     const reward = await Reward.create({
       userId: targetId.toUpperCase(),
+      user: user._id, // Relation using _id
       activity,
       points: Number(points),
       date: new Date(),
@@ -46,7 +48,8 @@ const addReward = async (req, res) => {
 
     res.status(201).json({ reward, updatedPoints: user.rewardPoints });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    console.error("ERROR:", err);
+    res.status(500).json({ message: err.message });
   }
 };
 

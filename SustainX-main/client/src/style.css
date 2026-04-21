@@ -2081,3 +2081,241 @@ tbody td {
     display: none !important;
   }
 }
+
+/* Pickup Code Highlight */
+.pickup-code {
+  font-size: 20px;
+  font-weight: 800;
+  color: #eb4c4c;
+  letter-spacing: 2px;
+  background: rgba(235, 76, 76, 0.08);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 2px dashed rgba(235, 76, 76, 0.3);
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.modal-overlay {
+  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.4);
+  transition: opacity 0.3s ease;
+}
+
+.modal {
+  transform: scale(0.9);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+}
+
+.modal-overlay.open .modal {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* ── Order Status Tracker ── */
+.order-status-tracker {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  padding: 0 1rem;
+  position: relative;
+}
+
+.order-status-tracker::before {
+  content: '';
+  position: absolute;
+  top: 15px;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: var(--border);
+  z-index: 0;
+}
+
+.status-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 1;
+  width: 25%;
+}
+
+.step-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  transition: all 0.3s ease;
+}
+
+.status-step.active .step-dot {
+  background: var(--clr-blue);
+  border-color: var(--clr-blue);
+  color: white;
+  box-shadow: 0 0 0 5px rgba(76, 140, 228, 0.15);
+}
+
+.status-step.completed .step-dot {
+  background: var(--clr-green);
+  border-color: var(--clr-green);
+  color: white;
+}
+
+.step-text {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--txt-muted);
+  letter-spacing: 0.5px;
+}
+
+.status-step.active .step-text,
+.status-step.completed .step-text {
+  color: var(--txt-main);
+}
+
+/* ── QR & Copy UI ── */
+.qr-container {
+  background: white;
+  padding: 1rem;
+  border-radius: 12px;
+  display: inline-block;
+  box-shadow: var(--shadow-sm);
+  margin: 1rem 0;
+}
+
+.copy-btn {
+  background: var(--bg-muted);
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.5rem auto;
+  transition: background 0.2s;
+}
+
+.copy-btn:hover {
+  background: var(--border);
+}
+
+.verification-box {
+  background: rgba(255, 209, 80, 0.08);
+  border: 1px solid rgba(255, 209, 80, 0.3);
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.verification-input {
+  width: 100%;
+  max-width: 200px;
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  padding: 0.6rem;
+  margin-top: 0.8rem;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.verification-input:focus {
+  border-color: var(--clr-blue);
+}
+
+/* ── Skeleton Loader ── */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: var(--r-sm);
+  display: inline-block;
+  min-height: 1em;
+  width: 100%;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-text { height: 18px; margin-bottom: 8px; }
+.skeleton-title { height: 28px; width: 60%; margin-bottom: 12px; }
+.skeleton-rect { height: 100px; border-radius: 12px; }
+
+/* ── Success Animation ── */
+.delivery-success-wrapper {
+  text-align: center;
+  padding: 3rem 1rem;
+  animation: bounceIn .6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.success-checkmark {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1.5rem;
+  border-radius: 50%;
+  background: var(--clr-green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  color: white;
+  box-shadow: 0 10px 25px rgba(145, 208, 108, 0.4);
+}
+
+@keyframes bounceIn {
+  from { opacity: 0; transform: scale(.5); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ── Interaction Improvements ── */
+.btn-primary:active,
+.btn-amber:active,
+.btn-blue:active {
+  transform: translateY(2px);
+}
+
+.card-lift {
+  transition: transform var(--t-med), box-shadow var(--t-med);
+}
+
+.card-lift:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ── Print Receipt Styles ── */
+@media print {
+  body * { visibility: hidden !important; }
+  .modal-overlay.open, .modal-overlay.open .modal, .modal-overlay.open .modal * {
+    visibility: visible !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+  }
+  .modal { box-shadow: none !important; width: 100% !important; max-width: 100% !important; }
+  .modal-close, .btn, .copy-btn, .order-status-tracker, .verification-box, .qr-container { display: none !important; }
+  .receipt-heading { display: block !important; text-align: center; border-bottom: 2px solid #000; padding-bottom: 1rem; margin-bottom: 1.5rem; }
+  .print-only { display: block !important; }
+}
+
+.print-only { display: none; }

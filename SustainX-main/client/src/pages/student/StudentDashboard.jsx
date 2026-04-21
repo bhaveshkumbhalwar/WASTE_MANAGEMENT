@@ -80,6 +80,7 @@ export default function StudentDashboard() {
   // Store
   const [storeItems, setStoreItems] = useState([]);
   const [myOrders, setMyOrders] = useState([]);
+  const [isOrdersLoading, setIsOrdersLoading] = useState(false);
 
   // Receipt Modal
   const [receiptOrder, setReceiptOrder] = useState(null);
@@ -136,21 +137,28 @@ export default function StudentDashboard() {
 
   const loadOrders = async () => {
     try {
+      setIsOrdersLoading(true);
       const res = await getOrders();
       setMyOrders(res.data);
-    } catch { /* ignore */ }
+    } catch { /* ignore */ } finally {
+      setIsOrdersLoading(false);
+    }
   };
 
+  const [isRedeeming, setIsRedeeming] = useState(false);
   const handleRedeem = async (itemId) => {
+    if (isRedeeming) return;
+    setIsRedeeming(true);
     try {
+      console.log("REDEEM REQUEST for:", itemId);
       const res = await redeemStoreItem(itemId);
       showToast(`Item redeemed! Order ${res.data.order.orderId} created. Remaining: ${res.data.remainingPoints} pts ✅`);
-      loadStore();
-      loadOrders();
-      loadProfile();
-      loadRewards();
+      await Promise.all([loadStore(), loadOrders(), loadProfile(), loadRewards()]);
     } catch (err) {
+      console.error("REDEEM ERROR:", err);
       showToast(err.response?.data?.message || 'Error redeeming item', 'error');
+    } finally {
+      setIsRedeeming(false);
     }
   };
 
@@ -591,11 +599,11 @@ export default function StudentDashboard() {
                       </div>
                       <button
                         className={`btn btn-sm btn-full ${rewardTotal >= item.pointsRequired && item.stock > 0 ? 'btn-primary' : 'btn-ghost'}`}
-                        disabled={rewardTotal < item.pointsRequired || item.stock <= 0}
+                        disabled={rewardTotal < item.pointsRequired || item.stock <= 0 || isRedeeming}
                         onClick={() => handleRedeem(item._id)}
                         style={{ marginTop: '.6rem' }}
                       >
-                        {item.stock <= 0 ? '❌ Out of Stock' : rewardTotal < item.pointsRequired ? `🔒 Need ${item.pointsRequired - rewardTotal} more pts` : '🛒 Redeem'}
+                        {isRedeeming ? '⌛ Redeeming…' : rewardTotal >= item.pointsRequired ? '🛒 Redeem' : `🔒 Need ${item.pointsRequired - rewardTotal} more pts`}
                       </button>
                     </div>
                   </div>
@@ -615,79 +623,131 @@ export default function StudentDashboard() {
               </div>
 
               <div className="order-list-vertical">
-                {myOrders.length === 0 ? (
+                {isOrdersLoading ? (
+                  [1, 2].map(i => (
+                    <div className="card" key={i} style={{ padding: '1.5rem', marginBottom: '1rem' }}>
+                      <div className="skeleton skeleton-title" style={{ width: '30%' }}></div>
+                      <div className="skeleton skeleton-rect" style={{ margin: '1.5rem 0' }}></div>
+                      <div className="grid-2">
+                        <div className="skeleton skeleton-text"></div>
+                        <div className="skeleton skeleton-text"></div>
+                      </div>
+                    </div>
+                  ))
+                ) : myOrders.length === 0 ? (
                   <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
                     <div style={{ fontSize: '3rem' }}>🛍️</div>
                     <h3>No orders found</h3>
                     <p className="text-muted">Redeem your points in the Eco Store to see your orders here!</p>
                   </div>
                 ) : myOrders.map((o) => (
-                  <div className="card order-tracking-card" key={o.orderId}>
-                    <div className="order-tracking-header">
-                      <div>
-                        <div className="order-id-label">Order <span style={{ color: 'var(--clr-blue)' }}>{o.orderId}</span></div>
-                        <div className="order-date-label">{fmtDate(o.createdAt)}</div>
+                  <div className="card order-tracking-card card-lift" key={o._id} style={{ marginBottom: '1.2rem', padding: '1.5rem' }}>
+                    <div className="order-tracking-header" style={{ marginBottom: '1.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div style={{ fontSize: '2rem' }}>📦</div>
+                        <div>
+                          <div className="order-id-label">Order <span style={{ color: 'var(--clr-blue)' }}>{o.orderId}</span></div>
+                          <div className="order-date-label">Placed on {fmtDate(o.createdAt)}</div>
+                        </div>
                       </div>
-                      <div className="order-points-badge">⭐ {o.pointsSpent} pts</div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div className="order-points-badge" style={{ fontSize: '.9rem', padding: '.4rem .8rem' }}>⭐ {o.pointsUsed} pts</div>
+                        {(o.failedAttempts || 0) > 0 && (
+                          <div style={{ fontSize: '.65rem', color: 'var(--clr-red)', fontWeight: 700, marginTop: '.3rem' }}>
+                            ⚠️ {3 - o.failedAttempts} attempts left
+                          </div>
+                        )}
+                      </div>
                     </div>
                     
-                    <div className="order-details-grid">
-                      <div className="order-item-info">
-                        <div className="text-muted" style={{ fontSize: '.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Product</div>
-                        <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{o.itemName}</div>
-                      </div>
-                      
-                      <div className="order-pickup-info">
-                        <div className="info-row">
-                          <span className="info-icon">📍</span>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 1fr) 250px 150px', gap: '1.5rem', alignItems: 'start', marginBottom: '1.5rem' }}>
+                      {/* Product & Location */}
+                      <div>
+                        <div style={{ marginBottom: '.8rem' }}>
+                          <div className="info-label">Product</div>
+                          <div style={{ fontWeight: 800, fontSize: '1.2rem', color: 'var(--clr-navy)' }}>{o.itemName}</div>
+                        </div>
+                        {o.assignedCollectorName && (
+                          <div style={{ marginBottom: '.8rem', display: 'flex', alignItems: 'center', gap: '.4rem', color: 'var(--clr-green)', fontWeight: 600, fontSize: '.85rem' }}>
+                            <span>👷 Collector:</span>
+                            <span>{o.assignedCollectorName}</span>
+                          </div>
+                        )}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                           <div>
-                            <div className="info-label">Pickup Location</div>
-                            <div className="info-value">{o.pickupLocation || 'Admin Office'}</div>
+                            <div className="info-label">📍 Location</div>
+                            <div style={{ fontWeight: 600, fontSize: '.9rem' }}>{o.pickupLocation || 'Admin Office'}</div>
+                          </div>
+                          <div>
+                            <div className="info-label">🕒 Time</div>
+                            <div style={{ fontWeight: 600, fontSize: '.9rem' }}>{o.pickupTime || '10 AM - 5 PM'}</div>
                           </div>
                         </div>
-                        <div className="info-row">
-                          <span className="info-icon">🕒</span>
-                          <div>
-                            <div className="info-label">Available Time</div>
-                            <div className="info-value">{o.pickupTime || '10 AM - 5 PM'}</div>
+                      </div>
+
+                      {/* Pickup Code & QR */}
+                      <div style={{ background: 'var(--bg-muted, rgba(0,0,0,.02))', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border)', textAlign: 'center' }}>
+                        <div className="info-label">🔐 Pickup Code</div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '.5rem', margin: '.3rem 0' }}>
+                          <div className="pickup-code" style={{ letterSpacing: '2px', fontSize: '1.2rem' }}>{o.pickupCode}</div>
+                          <button 
+                            className="btn btn-ghost btn-sm" 
+                            style={{ padding: '.2rem .4rem' }}
+                            onClick={() => {
+                              navigator.clipboard.writeText(o.pickupCode);
+                              showToast('Code copied!', 'info');
+                            }}
+                          >
+                            📋
+                          </button>
+                        </div>
+                        <div className="qr-container" style={{ margin: '.5rem 0', padding: '.5rem', background: 'white' }}>
+                          <img 
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${o.pickupCode}`} 
+                            alt="QR"
+                            style={{ width: '80px', height: '80px' }}
+                          />
+                        </div>
+                        <div style={{ fontSize: '.65rem', color: 'var(--txt-muted)' }}>
+                          {o.expiresAt ? `Expires: ${new Date(o.expiresAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : 'Show this at pickup'}
+                        </div>
+                      </div>
+
+                      {/* Status Simple Badge */}
+                      <div style={{ textAlign: 'right' }}>
+                        <div className="info-label">Status</div>
+                        <StatusBadge status={o.status === 'ready_for_pickup' ? 'ready' : o.status === 'approved' ? 'in-progress' : o.status === 'delivered' ? 'completed' : 'pending'} />
+                        {o.status === 'delivered' && o.deliveredAt && (
+                          <div style={{ fontSize: '.7rem', color: 'var(--clr-green)', marginTop: '.5rem', fontWeight: 600 }}>
+                            Delivered {fmtDate(o.deliveredAt)}
                           </div>
-                        </div>
-                      </div>
-
-                      {o.pickupCode && (
-                        <div className="order-pickup-code-box">
-                          <div className="info-label">🔐 Pickup Code</div>
-                          <div className="pickup-code-value">{o.pickupCode}</div>
-                          <div className="text-muted" style={{ fontSize: '.65rem', marginTop: '.2rem' }}>Show this at pickup</div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="order-status-visual">
-                      <div className="status-progress-container">
-                        {[
-                          { id: 'pending', label: 'Pending', icon: '⏳' },
-                          { id: 'approved', label: 'Approved', icon: '👍' },
-                          { id: 'ready_for_pickup', label: 'Ready', icon: '🎁' },
-                          { id: 'delivered', label: 'Delivered', icon: '✅' },
-                        ].map((step, idx, steps) => {
-                          const statusOrder = ['pending', 'approved', 'ready_for_pickup', 'delivered'];
-                          const currentIdx = statusOrder.indexOf(o.status);
-                          const isCompleted = idx < currentIdx || o.status === 'delivered';
-                          const isActive = idx === currentIdx && o.status !== 'delivered';
-                          return (
-                            <div key={idx} className={`progress-step ${isCompleted ? 'completed' : ''} ${isActive ? 'active' : ''}`}>
-                              <div className="step-point">{isCompleted ? '✔' : step.icon}</div>
-                              <div className="step-label">{step.label}</div>
-                              {idx < steps.length - 1 && <div className="step-line" />}
-                            </div>
-                          );
-                        })}
+                        )}
+                        {o.failedAttempts >= 3 && (
+                          <div style={{ fontSize: '.7rem', color: 'var(--clr-red)', marginTop: '.5rem', fontWeight: 700 }}>
+                            ⛔ ACCOUNT LOCKED
+                          </div>
+                        )}
                       </div>
                     </div>
 
-                    <div style={{ textAlign: 'right', marginTop: '.75rem' }}>
-                      <button className="btn btn-sm btn-blue" onClick={() => { setReceiptOrder(o); setReceiptModalOpen(true); }}>🧾 View Receipt</button>
+                    {/* Tracker */}
+                    <div className="order-status-tracker" style={{ margin: '1rem 0 2rem' }}>
+                      {['pending', 'approved', 'ready_for_pickup', 'delivered'].map((s, i) => {
+                        const statusOrder = ['pending', 'approved', 'ready_for_pickup', 'delivered'];
+                        const currentIdx = statusOrder.indexOf(o.status);
+                        const isCompleted = i < currentIdx || o.status === 'delivered';
+                        const isActive = o.status === s;
+                        return (
+                          <div key={s} className={`status-step ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}>
+                            <div className="step-dot">{isCompleted ? '✓' : i + 1}</div>
+                            <div className="step-text">{s.replace(/_/g, ' ')}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.8rem' }}>
+                      <button className="btn btn-sm btn-ghost" onClick={() => { setReceiptOrder(o); setReceiptModalOpen(true); }}>🧾 Full Receipt</button>
                     </div>
                   </div>
                 ))}
@@ -718,10 +778,10 @@ export default function StudentDashboard() {
                   <span className="receipt-label">📦 Product</span>
                   <span className="receipt-value" style={{ fontWeight: 700 }}>{receiptOrder.itemName}</span>
                 </div>
-                <div className="receipt-row">
-                  <span className="receipt-label">⭐ Points Used</span>
-                  <span className="receipt-value">{receiptOrder.pointsSpent} pts</span>
-                </div>
+                  <div className="receipt-row">
+                    <span className="receipt-label">⭐ Points Used</span>
+                    <span className="receipt-value">{receiptOrder.pointsUsed} pts</span>
+                  </div>
                 <div className="receipt-row">
                   <span className="receipt-label">📅 Date</span>
                   <span className="receipt-value">{fmtDate(receiptOrder.createdAt)}</span>
@@ -754,7 +814,10 @@ export default function StudentDashboard() {
 
               <div className="receipt-footer">
                 <p>Thank you for choosing eco-friendly products! 🌱</p>
-                <button className="btn btn-primary" onClick={() => window.print()} style={{ marginTop: '.75rem' }}>🖨️ Print Receipt</button>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+                  <button className="btn btn-primary btn-full" onClick={() => window.print()}>🖨️ Print Receipt</button>
+                  <button className="btn btn-ghost btn-full" onClick={() => setReceiptModalOpen(false)}>Close</button>
+                </div>
               </div>
             </div>
           )}

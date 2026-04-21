@@ -23,6 +23,7 @@ export default function AuthPage() {
   const [suDept, setSuDept] = useState('');
   const [suPass, setSuPass] = useState('');
   const [suConfirm, setSuConfirm] = useState('');
+  const [suBlock, setSuBlock] = useState('');
 
   const handleRoleSelect = (role) => {
     setSelectedRole(role);
@@ -51,8 +52,8 @@ export default function AuthPage() {
   const handleStudentSignup = async (e) => {
     e.preventDefault();
     setError('');
-    if (!suName || !suEmail || !suDept || !suPass || !suConfirm) {
-      setError('Please fill in all fields.');
+    if (!suName || !suEmail || !suDept || !suPass || !suConfirm || !suBlock) {
+      setError('Please fill in all fields including Campus Block.');
       return;
     }
     if (!/^[^@]+@[^@]+\.[^@]+$/.test(suEmail)) {
@@ -69,7 +70,13 @@ export default function AuthPage() {
     }
     setLoading(true);
     try {
-      await register({ name: suName, email: suEmail, dept: suDept, password: suPass });
+      await register({ 
+        name: suName, 
+        email: suEmail, 
+        dept: suDept, 
+        password: suPass,
+        block: suBlock 
+      });
       showToast('Account created successfully!');
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed');
@@ -220,6 +227,20 @@ export default function AuthPage() {
                     <div className="input-icon-wrap">
                       <span className="input-icon">📚</span>
                       <input className="form-input" type="text" placeholder="e.g. Computer Science" value={suDept} onChange={(e) => setSuDept(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Campus Block</label>
+                    <div className="input-icon-wrap">
+                      <span className="input-icon">🏢</span>
+                      <select className="form-select" value={suBlock} onChange={(e) => setSuBlock(e.target.value)}>
+                        <option value="">Select your block…</option>
+                        <option value="A">Block A</option>
+                        <option value="B">Block B</option>
+                        <option value="C">Block C</option>
+                        <option value="D">Block D</option>
+                        <option value="E">Block E</option>
+                      </select>
                     </div>
                   </div>
                   <div className="form-group">

@@ -16,6 +16,15 @@ const orderSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    block: {
+      type: String,
+      index: true,
+    },
     item: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'StoreItem',
@@ -25,7 +34,7 @@ const orderSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    pointsSpent: {
+    pointsUsed: {
       type: Number,
       required: true,
     },
@@ -34,6 +43,15 @@ const orderSchema = new mongoose.Schema(
       enum: ['pending', 'approved', 'ready_for_pickup', 'delivered'],
       default: 'pending',
       index: true,
+    },
+    assignedTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    assignedCollectorName: {
+      type: String,
+      default: null,
     },
     pickupLocation: {
       type: String,
@@ -46,6 +64,17 @@ const orderSchema = new mongoose.Schema(
     pickupCode: {
       type: String,
       unique: true,
+    },
+    failedAttempts: {
+      type: Number,
+      default: 0,
+    },
+    expiresAt: {
+      type: Date,
+      index: true,
+    },
+    deliveredAt: {
+      type: Date,
     },
     rewardGiven: {
       type: Boolean,

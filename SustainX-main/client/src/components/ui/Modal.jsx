@@ -1,4 +1,14 @@
+import { useEffect } from 'react';
+
 export default function Modal({ id, isOpen, onClose, title, children }) {
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape' && isOpen) onClose();
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
+
   return (
     <div
       className={`modal-overlay ${isOpen ? 'open' : ''}`}

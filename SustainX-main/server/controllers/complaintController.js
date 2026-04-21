@@ -212,6 +212,7 @@ const updateComplaintStatus = async (req, res) => {
           // Create Reward Log
           await Reward.create({
             userId: req.user.userId,
+            user: req.user._id, // Relation using _id
             activity: `Resolved Complaint ${complaint.complaintId}`,
             points: 10,
           });
@@ -224,17 +225,9 @@ const updateComplaintStatus = async (req, res) => {
     console.log(`✅ [SUCCESS] ${complaint.complaintId} set to ${status}`);
     res.json(complaint);
   } catch (err) {
-    // FULL DIAGNOSTIC REPORTING
-    console.error(`❌ [REJECT ERROR] Full Error Object:`, err);
-    
-    // Return a combined message that includes the stack or validation details
-    let errorDetail = err.message;
-    if (err.name === 'ValidationError') {
-      errorDetail = Object.values(err.errors).map(e => e.message).join(' | ');
-    }
-
+    console.error(`❌ [ERROR] updateComplaintStatus failed:`, err);
     res.status(500).json({ 
-      message: `Server Error: ${errorDetail}`, 
+      message: err.message, 
       type: err.name,
       id: req.params.id
     });

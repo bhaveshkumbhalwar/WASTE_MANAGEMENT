@@ -27,6 +27,7 @@ const protect = async (req, res, next) => {
 
     // Attach user to request — this includes role, block, userId etc.
     req.user = user;
+    console.log("AUTH USER:", req.user);
 
     // Debug: verify block is available (remove in production)
     if (user.role === 'collector') {
