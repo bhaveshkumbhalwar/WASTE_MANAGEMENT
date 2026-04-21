@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import ThemeToggle from '../components/ui/ThemeToggle';
+import Modal from '../components/ui/Modal';
+import { forgotPasswordApi } from '../services/api';
 
 export default function AuthPage() {
   const { login, register } = useAuth();
@@ -23,7 +25,14 @@ export default function AuthPage() {
   const [suDept, setSuDept] = useState('');
   const [suPass, setSuPass] = useState('');
   const [suConfirm, setSuConfirm] = useState('');
-  const [suBlock, setSuBlock] = useState('');
+
+  // Forgot Password fields
+  const [isForgotOpen, setIsForgotOpen] = useState(false);
+  const [forgotId, setForgotId] = useState('');
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSuccess, setForgotSuccess] = useState('');
+  const [forgotError, setForgotError] = useState('');
 
   const handleRoleSelect = (role) => {
     setSelectedRole(role);
@@ -52,8 +61,8 @@ export default function AuthPage() {
   const handleStudentSignup = async (e) => {
     e.preventDefault();
     setError('');
-    if (!suName || !suEmail || !suDept || !suPass || !suConfirm || !suBlock) {
-      setError('Please fill in all fields including Campus Block.');
+    if (!suName || !suEmail || !suDept || !suPass || !suConfirm) {
+      setError('Please fill in all fields.');
       return;
     }
     if (!/^[^@]+@[^@]+\.[^@]+$/.test(suEmail)) {
@@ -74,14 +83,30 @@ export default function AuthPage() {
         name: suName, 
         email: suEmail, 
         dept: suDept, 
-        password: suPass,
-        block: suBlock 
+        password: suPass
       });
       showToast('Account created successfully!');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault();
+    setForgotError('');
+    setForgotSuccess('');
+    if (!forgotId || !forgotEmail) {
+      setForgotError('Please provide both User ID and Email.');
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      const res = await forgotPasswordApi({ userId: forgotId, email: forgotEmail });
+      setForgotSuccess(res.data.message);
+    } catch (err) {
+      setForgotError(err.response?.data?.message || 'Request failed. Please verify your details.');
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -178,6 +203,16 @@ export default function AuthPage() {
                       <input className="form-input" type={showPass ? 'text' : 'password'} placeholder="••••••••" value={loginPass} onChange={(e) => setLoginPass(e.target.value)} />
                       <button type="button" className="pass-toggle" onClick={() => setShowPass(!showPass)}>👁️</button>
                     </div>
+                    <div style={{ textAlign: 'right', marginTop: '.3rem' }}>
+                      <button 
+                        type="button" 
+                        className="btn-link" 
+                        style={{ fontSize: '.82rem', color: 'var(--clr-blue)', fontWeight: 600, border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}
+                        onClick={() => { setIsForgotOpen(true); setForgotError(''); setForgotSuccess(''); }}
+                      >
+                        Forgot Password?
+                      </button>
+                    </div>
                   </div>
                   <button type="submit" className="btn btn-primary btn-lg btn-full" disabled={loading}>
                     {loading ? '⏳' : 'Sign In →'}
@@ -229,20 +264,7 @@ export default function AuthPage() {
                       <input className="form-input" type="text" placeholder="e.g. Computer Science" value={suDept} onChange={(e) => setSuDept(e.target.value)} />
                     </div>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Campus Block</label>
-                    <div className="input-icon-wrap">
-                      <span className="input-icon">🏢</span>
-                      <select className="form-select" value={suBlock} onChange={(e) => setSuBlock(e.target.value)}>
-                        <option value="">Select your block…</option>
-                        <option value="A">Block A</option>
-                        <option value="B">Block B</option>
-                        <option value="C">Block C</option>
-                        <option value="D">Block D</option>
-                        <option value="E">Block E</option>
-                      </select>
-                    </div>
-                  </div>
+
                   <div className="form-group">
                     <label className="form-label">Password</label>
                     <div className="input-icon-wrap">
@@ -273,6 +295,57 @@ export default function AuthPage() {
           </div>
         </div>
       </div>
+
+      <Modal 
+        id="forgot-modal" 
+        isOpen={isForgotOpen} 
+        onClose={() => setIsForgotOpen(false)} 
+        title="Reset Password"
+      >
+        <div style={{ padding: '1.5rem' }}>
+          {forgotSuccess ? (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📧</div>
+              <h3 style={{ color: 'var(--clr-green)', marginBottom: '.5rem' }}>Request Sent!</h3>
+              <p className="text-muted" style={{ fontSize: '.9rem', lineHeight: '1.5' }}>{forgotSuccess}</p>
+              <button className="btn btn-primary btn-full" style={{ marginTop: '1.5rem' }} onClick={() => setIsForgotOpen(false)}>Close</button>
+            </div>
+          ) : (
+            <form onSubmit={handleForgotSubmit}>
+              <p className="text-muted" style={{ fontSize: '.85rem', marginBottom: '1.2rem' }}>
+                Enter your User ID and registered email address. We'll send instructions to reset your password.
+              </p>
+              
+              {forgotError && <div className="auth-error" style={{ marginBottom: '1rem' }}>{forgotError}</div>}
+              
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label">User ID</label>
+                <input 
+                  className="form-input" 
+                  type="text" 
+                  placeholder="e.g. ALEX123" 
+                  value={forgotId} 
+                  onChange={(e) => setForgotId(e.target.value)} 
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label className="form-label">Email Address</label>
+                <input 
+                  className="form-input" 
+                  type="email" 
+                  placeholder="yourname@campus.edu" 
+                  value={forgotEmail} 
+                  onChange={(e) => setForgotEmail(e.target.value)} 
+                />
+              </div>
+              
+              <button type="submit" className="btn btn-primary btn-full" disabled={forgotLoading}>
+                {forgotLoading ? '⏳ Requesting...' : 'Send Reset Instructions'}
+              </button>
+            </form>
+          )}
+        </div>
+      </Modal>
     </>
   );
 }

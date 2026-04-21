@@ -22,6 +22,7 @@ export const loginUser = (data) => {
 
 export const registerUser = (data) => API.post('/auth/register', data);
 export const getMe = () => API.get('/auth/me');
+export const forgotPasswordApi = (data) => API.post('/auth/forgot-password', data);
 
 // ================= USERS =================
 export const getUsers = (role) =>

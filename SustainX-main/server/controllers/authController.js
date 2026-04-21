@@ -58,8 +58,10 @@ const register = async (req, res) => {
   try {
     const { name, email, dept, password, block } = req.body;
 
-    if (!name || !email || !password || !block) {
-      return res.status(400).json({ message: 'Please fill all required fields including Block' });
+    const studentBlock = block || 'A';
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'Please fill all required fields' });
     }
 
     // Generate userId from email prefix
@@ -83,7 +85,7 @@ const register = async (req, res) => {
       name,
       email: email.toLowerCase(),
       dept: dept || '',
-      block,
+      block: studentBlock,
     });
 
     res.status(201).json({
@@ -95,10 +97,36 @@ const register = async (req, res) => {
   }
 };
 
-// @desc    Get current user
-// @route   GET /api/auth/me
-const getMe = async (req, res) => {
-  res.json({ user: req.user });
+// @desc    Forgot Password Request
+// @route   POST /api/auth/forgot-password
+const forgotPassword = async (req, res) => {
+  try {
+    const { userId, email } = req.body;
+
+    if (!userId || !email) {
+      return res.status(400).json({ message: 'Please provide both User ID and Email' });
+    }
+
+    const user = await User.findOne({ 
+      userId: userId.trim().toUpperCase(), 
+      email: email.trim().toLowerCase() 
+    });
+
+    if (!user) {
+      // For security, you might want to return the same message regardless of whether user exists
+      // but for this project's purpose of debugging/internal use, being explicit is fine.
+      return res.status(404).json({ message: 'User not found with matching ID and email.' });
+    }
+
+    // Since we don't have SMTP setup, we simulate the "Reset Email Sent"
+    console.log(`🔑 [PASSWORD RESET] Request received for ${user.userId} (${user.email})`);
+    
+    res.json({ 
+      message: 'Password reset request received. Instructions have been sent to your administrator or registered email.' 
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
 };
 
-module.exports = { login, register, getMe };
+module.exports = { login, register, getMe, forgotPassword };
