@@ -13,6 +13,8 @@ const rewardRoutes = require('./routes/rewardRoutes');
 const statsRoutes = require('./routes/statsRoutes');
 const storeRoutes = require('./routes/storeRoutes');
 const orderRoutes = require('./routes/orderRoutes');
+const iotRoutes = require('./routes/iotRoutes');
+
 
 const app = express();
 
@@ -34,6 +36,8 @@ app.use('/api/rewards', rewardRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/store', storeRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/iot', iotRoutes);
+
 
 // API root check
 app.get('/api', (req, res) => {

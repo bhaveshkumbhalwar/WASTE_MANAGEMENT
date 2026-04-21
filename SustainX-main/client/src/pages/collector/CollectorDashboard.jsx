@@ -173,6 +173,19 @@ export default function CollectorDashboard() {
     return () => clearInterval(interval);
   }, [loadStats, loadDashboard]);
 
+  // IoT Alert Side Effect
+  useEffect(() => {
+    const newIot = openComplaints.find(c => c.type === 'iot' && c.status === 'pending');
+    if (newIot) {
+      // Use a simple local storage or ref to avoid repeating toast for the same complaint
+      const lastAlertId = sessionStorage.getItem('last_iot_alert');
+      if (lastAlertId !== newIot.complaintId) {
+        showToast(`🚨 DUSTBIN FULL: IoT Alert in Block ${newIot.block}!`, 'warning');
+        sessionStorage.setItem('last_iot_alert', newIot.complaintId);
+      }
+    }
+  }, [openComplaints, showToast]);
+
   const handleUpdateStatus = async () => {
     if (modalStatus === 'rejected' && !rejectionReason.trim()) {
       showToast('Please provide a reason for rejection.', 'warning');
@@ -302,9 +315,16 @@ export default function CollectorDashboard() {
                       )}
                     </div>
                     <div className="complaint-body">
-                      <div className="complaint-id">{c.complaintId}</div>
+                      <div className="flex-between">
+                        <div className="complaint-id">{c.complaintId}</div>
+                        {c.type === 'iot' && (
+                          <span className="badge badge-error" style={{ fontSize: '.7rem', padding: '.2rem .4rem', display: 'flex', alignItems: 'center', gap: '.3rem' }}>
+                            🚨 IoT ALERT
+                          </span>
+                        )}
+                      </div>
                       <div className="complaint-location">📍 {c.location}</div>
-                      <div className="complaint-desc">{c.description}</div>
+                      <div className="complaint-desc" style={c.type === 'iot' ? { fontWeight: 700, color: 'var(--clr-red)' } : {}}>{c.description}</div>
                       <div className="flex-between" style={{ flexWrap: 'wrap', gap: '.5rem' }}>
                         <StatusBadge status={c.status} />
                         <button

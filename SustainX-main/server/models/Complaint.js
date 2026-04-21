@@ -65,7 +65,7 @@ const complaintSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['complaint', 'scan'],
+      enum: ['complaint', 'scan', 'iot'],
       default: 'complaint',
     },
     statusHistory: [statusHistorySchema],
