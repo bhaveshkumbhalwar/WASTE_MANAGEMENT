@@ -26,13 +26,13 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const login = useCallback(async (userId, password, role) => {
-    const res = await loginUser({ userId, password, role });
+  const login = useCallback(async (email, password, role) => {
+    const res = await loginUser({ email, password, role });
     localStorage.setItem('wms_token', res.data.token);
     setUser(res.data.user);
     // Increment session key to force all dashboard components to remount with fresh state
     setSessionKey((k) => k + 1);
-    console.log(`🔑 [AUTH] Logged in as ${res.data.user.userId} | role: ${res.data.user.role} | block: ${res.data.user.block || 'N/A'}`);
+    console.log(`🔑 [AUTH] Logged in as ${res.data.user.email} | role: ${res.data.user.role} | block: ${res.data.user.block || 'N/A'}`);
     return res.data.user;
   }, []);
 

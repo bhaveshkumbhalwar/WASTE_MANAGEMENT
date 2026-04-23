@@ -19,6 +19,7 @@ import {
   changePassword,
   getOrders,
   updateOrderStatus,
+  updateUser,
 } from '../../services/api';
 
 const NAV_ITEMS = [
@@ -89,6 +90,9 @@ export default function AdminDashboard() {
   const [apNew, setApNew] = useState('');
   const [apConfirm, setApConfirm] = useState('');
 
+  // Update Profile
+  const [upName, setUpName] = useState('');
+
   /* ════════════ Data Loaders ════════════ */
 
   const loadStats = useCallback(async () => {
@@ -140,10 +144,11 @@ export default function AdminDashboard() {
 
   const loadProfile = useCallback(async () => {
     try {
-      const res = await getUserById(user.userId);
+      const res = await getUserById(user._id);
       setProfile(res.data);
+      setUpName(res.data.name || '');
     } catch { /* ignore */ }
-  }, [user.userId]);
+  }, [user._id]);
 
   const loadStoreOrders = useCallback(async () => {
     try {
@@ -263,11 +268,23 @@ export default function AdminDashboard() {
     if (apNew !== apConfirm) { showToast('Passwords do not match.', 'error'); return; }
     if (apNew.length < 6) { showToast('Password must be ≥ 6 characters.', 'warning'); return; }
     try {
-      await changePassword(user.userId, { oldPassword: apOld, newPassword: apNew });
+      await changePassword(user._id, { oldPassword: apOld, newPassword: apNew });
       showToast('Admin password updated! 🔐', 'success');
       setApOld(''); setApNew(''); setApConfirm('');
     } catch (err) {
       showToast(err.response?.data?.message || 'Error', 'error');
+    }
+  };
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    if (!upName.trim()) { showToast('Name cannot be empty.', 'error'); return; }
+    try {
+      await updateUser(user._id, { name: upName.trim() });
+      showToast('Profile updated successfully! ✅');
+      loadProfile();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Error updating profile', 'error');
     }
   };
 
@@ -586,6 +603,15 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 </div>
+
+                <div className="card" style={{ marginBottom: '1.5rem' }}>
+                  <div className="section-title" style={{ marginBottom: '1rem' }}><div className="section-title-bar"></div><h2>Update Profile</h2></div>
+                  <form onSubmit={handleUpdateProfile} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '.9rem' }}>
+                    <div className="form-group"><label className="form-label">Full Name</label><input className="form-input" type="text" value={upName} onChange={(e) => setUpName(e.target.value)} placeholder="Admin Name" /></div>
+                    <button type="submit" className="btn btn-primary">✏️ Update Name</button>
+                  </form>
+                </div>
+
                 <div className="danger-zone">
                   <div className="danger-header">
                     <span style={{ fontSize: '2rem' }}>⚠️</span>

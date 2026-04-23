@@ -43,31 +43,38 @@ const processIotData = async (req, res) => {
       block: block.toUpperCase()
     });
 
+    // 4b. Find Admin to own the system complaint
+    let adminUser = await User.findOne({ role: 'admin' });
+    if (!adminUser) {
+      // Fallback if no admin exists (should not happen in prod)
+      adminUser = await User.findOne({}); 
+    }
+
     // 5. Create Auto-Complaint
     const complaintId = 'IOT-' + Date.now();
     const complaint = await Complaint.create({
       complaintId,
-      studentId: 'SYSTEM-IOT', // Special ID for IoT triggers
+      user: adminUser._id, // Required ObjectId
       location: `Block ${block} - Smart Dustbin`,
       wasteType: 'Mixed Waste',
       description: `AUTOMATED ALERT: Dustbin in Block ${block} is reported ${level}% FULL by sensor.`,
       block: block.toUpperCase(),
       status: 'pending',
       type: 'iot',
-      assignedTo: collector ? collector.userId : null,
+      assignedTo: collector ? collector._id : null,
       statusHistory: [
         {
           status: 'pending',
           note: collector 
-            ? `IoT Alert triggered. Auto-assigned to collector ${collector.userId}`
+            ? `IoT Alert triggered. Auto-assigned to collector (Block ${block})`
             : 'IoT Alert triggered. No collector assigned for this block.',
-          updatedBy: 'SYSTEM-IOT',
+          updatedBy: adminUser._id,
           timestamp: new Date()
         }
       ]
     });
 
-    console.log(`🚨 [IOT] Auto-complaint created: ${complaintId} | Assigned to: ${collector ? collector.userId : 'NONE'}`);
+    console.log(`🚨 [IOT] Auto-complaint created: ${complaintId} | Assigned to: ${collector ? collector._id : 'NONE'}`);
 
     res.status(201).json({
       message: 'Complaint created successfully',

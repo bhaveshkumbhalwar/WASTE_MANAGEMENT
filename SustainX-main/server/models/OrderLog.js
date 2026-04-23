@@ -13,7 +13,8 @@ const orderLogSchema = new mongoose.Schema(
       required: true,
     },
     performedBy: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
       required: true,
     },
     details: {

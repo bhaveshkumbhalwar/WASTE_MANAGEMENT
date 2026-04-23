@@ -3,13 +3,7 @@ const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema(
   {
-    userId: {
-      type: String,
-      required: true,
-      unique: true,
-      uppercase: true,
-      trim: true,
-    },
+
     password: {
       type: String,
       required: true,
@@ -25,14 +19,12 @@ const userSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    // email is NOT unique — multiple collectors can share the same email.
-    // Login uses userId (which IS unique), not email.
     email: {
       type: String,
       required: true,
+      unique: true,
       lowercase: true,
       trim: true,
-      index: false, // explicitly no index — prevents accidental unique constraint
     },
     dept: {
       type: String,

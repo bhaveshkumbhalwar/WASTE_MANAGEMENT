@@ -20,6 +20,7 @@ import {
   getOrderById,
   updateOrderStatus,
   assignOrderApi,
+  updateUser,
 } from '../../services/api';
 
 const NAV_ITEMS = [
@@ -60,6 +61,9 @@ export default function CollectorDashboard() {
   const [cpOld, setCpOld] = useState('');
   const [cpNew, setCpNew] = useState('');
   const [cpConfirm, setCpConfirm] = useState('');
+
+  // Update Profile
+  const [upName, setUpName] = useState('');
 
   // Store & Rewards
   const [storeItems, setStoreItems] = useState([]);
@@ -111,11 +115,12 @@ export default function CollectorDashboard() {
 
   const loadProfile = useCallback(async () => {
     try {
-      const res = await getUserById(user.userId);
+      const res = await getUserById(user._id);
       setProfile(res.data);
+      setUpName(res.data.name || '');
       setRewardTotal(res.data.rewardPoints || 0);
     } catch { /* ignore */ }
-  }, [user.userId]);
+  }, [user._id]);
 
   const loadStoreItems = useCallback(async () => {
     try {
@@ -126,17 +131,17 @@ export default function CollectorDashboard() {
 
   const loadMyOrders = useCallback(async () => {
     try {
-      const res = await getOrders({ userId: user.userId });
+      const res = await getOrders({ user: user._id });
       setMyOrders(res.data);
     } catch { /* ignore */ }
-  }, [user.userId]);
+  }, [user._id]);
 
   const loadRewardHistory = useCallback(async () => {
     try {
-      const res = await getRewards({ userId: user.userId });
+      const res = await getRewards({ user: user._id });
       setRewardHistory(res.data);
     } catch { /* ignore */ }
-  }, [user.userId]);
+  }, [user._id]);
 
   const loadStoreOrders = useCallback(async () => {
     try {
@@ -294,11 +299,23 @@ export default function CollectorDashboard() {
     if (cpNew !== cpConfirm) { showToast('Passwords do not match.', 'error'); return; }
     if (cpNew.length < 6) { showToast('Password must be ≥ 6 characters.', 'warning'); return; }
     try {
-      await changePassword(user.userId, { oldPassword: cpOld, newPassword: cpNew });
+      await changePassword(user._id, { oldPassword: cpOld, newPassword: cpNew });
       showToast('Password updated! ✅');
       setCpOld(''); setCpNew(''); setCpConfirm('');
     } catch (err) {
       showToast(err.response?.data?.message || 'Error', 'error');
+    }
+  };
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    if (!upName.trim()) { showToast('Name cannot be empty.', 'error'); return; }
+    try {
+      await updateUser(user._id, { name: upName.trim() });
+      showToast('Profile updated successfully! ✅');
+      loadProfile(); // reload profile to show new name
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Error updating profile', 'error');
     }
   };
 
@@ -650,14 +667,24 @@ export default function CollectorDashboard() {
                   </div>
                 </div>
               </div>
-              <div className="card" style={{ maxWidth: 460 }}>
-                <div className="section-title"><div className="section-title-bar"></div><h2>Change Password</h2></div>
-                <form onSubmit={handleChangePassword} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '.9rem' }}>
-                  <div className="form-group"><label className="form-label">Current Password</label><input className="form-input" type="password" value={cpOld} onChange={(e) => setCpOld(e.target.value)} placeholder="Current password" /></div>
-                  <div className="form-group"><label className="form-label">New Password</label><input className="form-input" type="password" value={cpNew} onChange={(e) => setCpNew(e.target.value)} placeholder="New password" /></div>
-                  <div className="form-group"><label className="form-label">Confirm New Password</label><input className="form-input" type="password" value={cpConfirm} onChange={(e) => setCpConfirm(e.target.value)} placeholder="Repeat new password" /></div>
-                  <button type="submit" className="btn btn-primary">🔐 Update Password</button>
-                </form>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: 460 }}>
+                <div className="card">
+                  <div className="section-title"><div className="section-title-bar"></div><h2>Update Profile</h2></div>
+                  <form onSubmit={handleUpdateProfile} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '.9rem' }}>
+                    <div className="form-group"><label className="form-label">Full Name</label><input className="form-input" type="text" value={upName} onChange={(e) => setUpName(e.target.value)} placeholder="Your Name" /></div>
+                    <button type="submit" className="btn btn-primary">✏️ Update Name</button>
+                  </form>
+                </div>
+
+                <div className="card">
+                  <div className="section-title"><div className="section-title-bar"></div><h2>Change Password</h2></div>
+                  <form onSubmit={handleChangePassword} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '.9rem' }}>
+                    <div className="form-group"><label className="form-label">Current Password</label><input className="form-input" type="password" value={cpOld} onChange={(e) => setCpOld(e.target.value)} placeholder="Current password" /></div>
+                    <div className="form-group"><label className="form-label">New Password</label><input className="form-input" type="password" value={cpNew} onChange={(e) => setCpNew(e.target.value)} placeholder="New password" /></div>
+                    <div className="form-group"><label className="form-label">Confirm New Password</label><input className="form-input" type="password" value={cpConfirm} onChange={(e) => setCpConfirm(e.target.value)} placeholder="Repeat new password" /></div>
+                    <button type="submit" className="btn btn-primary">🔐 Update Password</button>
+                  </form>
+                </div>
               </div>
             </section>
           )}

@@ -19,7 +19,7 @@ const getUsers = async (req, res) => {
 // @route   GET /api/users/:id
 const getUserById = async (req, res) => {
   try {
-    const user = await User.findOne({ userId: req.params.id.toUpperCase() }).select('-password');
+    const user = await User.findById(req.params.id).select('-password');
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json(user);
   } catch (err) {
@@ -31,10 +31,10 @@ const getUserById = async (req, res) => {
 // @route   POST /api/users
 const createUser = async (req, res) => {
   try {
-    const { userId, role, name, email, dept, block, password } = req.body;
+    const { role, name, email, dept, block, password } = req.body;
 
-    if (!userId || !name || !email || !password) {
-      return res.status(400).json({ message: 'Please fill all required fields (userId, name, email, password)' });
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'Please fill all required fields (name, email, password)' });
     }
 
     // Validate block for students and collectors — required by schema
@@ -42,14 +42,12 @@ const createUser = async (req, res) => {
       return res.status(400).json({ message: `Block (A–E) is required when creating a ${role}` });
     }
 
-    // Only userId must be unique — email can be shared across collectors
-    const existing = await User.findOne({ userId: userId.toUpperCase() });
+    const existing = await User.findOne({ email: email.toLowerCase() });
     if (existing) {
-      return res.status(400).json({ message: `User ID "${userId.toUpperCase()}" already exists. Choose a different User ID.` });
+      return res.status(400).json({ message: `Email "${email.toLowerCase()}" already exists. Choose a different email.` });
     }
 
     const userData = {
-      userId: userId.toUpperCase(),
       password,
       role: role || 'student',
       name,
@@ -63,7 +61,7 @@ const createUser = async (req, res) => {
     }
 
     const user = await User.create(userData);
-    console.log(`👤 [USERS] Created ${userData.role} | userId: ${userData.userId} | block: ${userData.block || 'N/A'} | email: ${userData.email}`);
+    console.log(`👤 [USERS] Created ${userData.role} | block: ${userData.block || 'N/A'} | email: ${userData.email}`);
 
     res.status(201).json(user.toJSON());
   } catch (err) {
@@ -75,11 +73,11 @@ const createUser = async (req, res) => {
 // @route   PUT /api/users/:id
 const updateUser = async (req, res) => {
   try {
-    const user = await User.findOne({ userId: req.params.id.toUpperCase() });
+    const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     // Only allow self-update or admin
-    if (req.user.role !== 'admin' && req.user.userId !== user.userId) {
+    if (req.user.role !== 'admin' && req.user._id.toString() !== user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -109,11 +107,11 @@ const changePassword = async (req, res) => {
       return res.status(400).json({ message: 'Password must be at least 6 characters' });
     }
 
-    const user = await User.findOne({ userId: req.params.id.toUpperCase() });
+    const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     // Only allow self-update
-    if (req.user.userId !== user.userId) {
+    if (req.user._id.toString() !== user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -134,7 +132,7 @@ const changePassword = async (req, res) => {
 // @route   DELETE /api/users/:id
 const deleteUser = async (req, res) => {
   try {
-    const user = await User.findOneAndDelete({ userId: req.params.id.toUpperCase() });
+    const user = await User.findByIdAndDelete(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json({ message: `User ${user.name} deleted` });
   } catch (err) {

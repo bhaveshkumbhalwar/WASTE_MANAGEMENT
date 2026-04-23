@@ -23,13 +23,13 @@ const getComplaints = async (req, res) => {
     // ══ MANDATORY role-based filters (CANNOT be overridden) ══
     if (req.user.role === 'collector') {
       if (!req.user.block) {
-        console.warn(`⚠️ [COMPLAINTS] Collector ${req.user.userId} has NO block → empty result`);
+        console.warn(`⚠️ [COMPLAINTS] Collector ${req.user._id} has NO block → empty result`);
         return res.json([]);
       }
       // CRITICAL: This is a MongoDB query filter, NOT JS filtering
       query.block = req.user.block;
     } else if (req.user.role === 'student') {
-      query.studentId = req.user.userId;
+      query.user = req.user._id;
     }
     // admin: no mandatory filter
 
@@ -38,16 +38,19 @@ const getComplaints = async (req, res) => {
       query.status = req.query.status;
     }
     if (req.query.studentId && req.user.role === 'admin') {
-      query.studentId = req.query.studentId.toUpperCase();
+      query.user = req.query.studentId; // Frontend might still send 'studentId' as the query param key, but we map to 'user'
     }
     if (req.query.block && req.user.role === 'admin') {
       query.block = req.query.block.toUpperCase();
     }
 
     // Debug log
-    console.log(`📋 [GET /complaints] User: ${req.user.userId} | Role: ${req.user.role} | Block: ${JSON.stringify(req.user.block)} | Query:`, JSON.stringify(query));
+    console.log(`📋 [GET /complaints] User: ${req.user._id} | Role: ${req.user.role} | Block: ${JSON.stringify(req.user.block)} | Query:`, JSON.stringify(query));
 
-    const complaints = await Complaint.find(query).sort({ createdAt: -1 });
+    const complaints = await Complaint.find(query)
+      .populate('user', 'name email')
+      .populate('assignedTo', 'name email')
+      .sort({ createdAt: -1 });
 
     console.log(`📋 [GET /complaints] → ${complaints.length} result(s)`);
 
@@ -64,14 +67,16 @@ const getComplaintById = async (req, res) => {
   try {
     const complaint = await Complaint.findOne({
       complaintId: req.params.id.toUpperCase(),
-    });
+    })
+      .populate('user', 'name email')
+      .populate('assignedTo', 'name email');
     if (!complaint) return res.status(404).json({ message: 'Complaint not found' });
 
     // Security: verify caller has access
     if (req.user.role === 'collector' && complaint.block !== req.user.block) {
       return res.status(403).json({ message: 'Access denied: complaint belongs to a different block' });
     }
-    if (req.user.role === 'student' && complaint.studentId !== req.user.userId) {
+    if (req.user.role === 'student' && complaint.user._id.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Access denied: this is not your complaint' });
     }
 
@@ -104,7 +109,7 @@ const submitComplaint = async (req, res) => {
     const collectors = await User.find({ role: 'collector', block: normalizedBlock });
     if (collectors.length > 0) {
       const randomIdx = Math.floor(Math.random() * collectors.length);
-      assignedTo = collectors[randomIdx].userId;
+      assignedTo = collectors[randomIdx]._id;
     }
 
     // Image from multer (optional)
@@ -112,7 +117,7 @@ const submitComplaint = async (req, res) => {
 
     const complaint = await Complaint.create({
       complaintId,
-      studentId: req.user.userId,
+      user: req.user._id,
       location,
       wasteType,
       description,
@@ -125,9 +130,9 @@ const submitComplaint = async (req, res) => {
         {
           status: 'pending',
           note: assignedTo
-            ? `Complaint submitted and auto-assigned to collector ${assignedTo} (Block ${normalizedBlock})`
+            ? `Complaint submitted and auto-assigned to collector (Block ${normalizedBlock})`
             : `Complaint submitted (no collector available for Block ${normalizedBlock})`,
-          updatedBy: req.user.userId,
+          updatedBy: req.user._id,
           timestamp: new Date(),
         },
       ],
@@ -172,7 +177,7 @@ const updateComplaintStatus = async (req, res) => {
 
     // Security: collector can only update complaints from their block
     if (req.user.role === 'collector' && complaint.block !== req.user.block) {
-      console.warn(`🚫 [ACCESS DENIED] Collector ${req.user.userId} (Block ${req.user.block}) tried to update ${complaint.complaintId} (Block ${complaint.block})`);
+      console.warn(`🚫 [ACCESS DENIED] Collector ${req.user._id} (Block ${req.user.block}) tried to update ${complaint.complaintId} (Block ${complaint.block})`);
       return res.status(403).json({ message: 'Access denied: cannot update complaints from another block' });
     }
 
@@ -193,16 +198,16 @@ const updateComplaintStatus = async (req, res) => {
       note: status === 'rejected'
         ? `Rejected: ${rejectionReason.trim()}`
         : (note || `Status updated to ${status}`),
-      updatedBy: req.user.userId,
+      updatedBy: req.user._id,
       timestamp: new Date(),
     });
 
     // ── Reward Logic (Collector only — NOT for rejected) ──
     if (status === 'completed' && req.user.role === 'collector' && !complaint.rewardGiven) {
-      if (complaint.assignedTo === req.user.userId) {
-        // Atomic increment using User.findOneAndUpdate
-        const collector = await User.findOneAndUpdate(
-          { userId: req.user.userId },
+      if (complaint.assignedTo && complaint.assignedTo.toString() === req.user._id.toString()) {
+        // Atomic increment using User.findByIdAndUpdate
+        const collector = await User.findByIdAndUpdate(
+          req.user._id,
           { $inc: { rewardPoints: 10 } },
           { new: true }
         );
@@ -211,12 +216,11 @@ const updateComplaintStatus = async (req, res) => {
           complaint.rewardGiven = true;
           // Create Reward Log
           await Reward.create({
-            userId: req.user.userId,
             user: req.user._id, // Relation using _id
             activity: `Resolved Complaint ${complaint.complaintId}`,
             points: 10,
           });
-          console.log(`🏆 [REWARD] Collector ${req.user.userId} earned 10 pts for ${complaint.complaintId}`);
+          console.log(`🏆 [REWARD] Collector ${req.user._id} earned 10 pts for ${complaint.complaintId}`);
         }
       }
     }

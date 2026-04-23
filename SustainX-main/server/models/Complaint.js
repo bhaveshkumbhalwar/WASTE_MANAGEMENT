@@ -8,7 +8,11 @@ const statusHistorySchema = new mongoose.Schema(
       required: true,
     },
     note: { type: String, default: '' },
-    updatedBy: { type: String, default: '' },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
     timestamp: { type: Date, default: Date.now },
   },
   { _id: false }
@@ -21,8 +25,9 @@ const complaintSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
-    studentId: {
-      type: String,
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
       required: true,
       index: true,
     },
@@ -50,7 +55,8 @@ const complaintSchema = new mongoose.Schema(
       index: true,
     },
     assignedTo: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
       default: null,
     },
     status: {

@@ -18,6 +18,7 @@ import {
   getStoreItems,
   redeemStoreItem,
   getOrders,
+  updateUser,
 } from '../../services/api';
 
 const NAV_ITEMS = [
@@ -71,6 +72,9 @@ export default function StudentDashboard() {
   const [cpNew, setCpNew] = useState('');
   const [cpConfirm, setCpConfirm] = useState('');
 
+  // Update Profile
+  const [upName, setUpName] = useState('');
+
   // Carousel
   const [carouselIdx, setCarouselIdx] = useState(0);
 
@@ -88,30 +92,31 @@ export default function StudentDashboard() {
 
   const loadProfile = useCallback(async () => {
     try {
-      const res = await getUserById(user.userId);
+      const res = await getUserById(user._id);
       setProfile(res.data);
-      const compRes = await getComplaints({ studentId: user.userId });
+      setUpName(res.data.name || '');
+      const compRes = await getComplaints({ user: user._id });
       setRecentComplaints(compRes.data.slice(0, 5));
     } catch { /* ignore */ }
-  }, [user.userId]);
+  }, [user._id]);
 
   const loadHistory = useCallback(async () => {
     try {
-      const params = { studentId: user.userId };
+      const params = { user: user._id };
       if (histFilter) params.status = histFilter;
       const res = await getComplaints(params);
       setComplaints(res.data);
     } catch { /* ignore */ }
-  }, [user.userId, histFilter]);
+  }, [user._id, histFilter]);
 
   const loadRewards = useCallback(async () => {
     try {
-      const res = await getRewards({ studentId: user.userId });
+      const res = await getRewards({ user: user._id });
       setRewards(res.data);
-      const profRes = await getUserById(user.userId);
+      const profRes = await getUserById(user._id);
       setRewardTotal(profRes.data.rewardPoints || 0);
     } catch { /* ignore */ }
-  }, [user.userId]);
+  }, [user._id]);
 
   useEffect(() => {
     loadProfile();
@@ -209,7 +214,7 @@ export default function StudentDashboard() {
         description: 'Dustbin full alert via Quick Scan.', type: 'scan',
         block: scanBlock,
       });
-      await addReward({ studentId: user.userId, activity: 'Dustbin Full Alert (Scan)', points: 30 });
+      await addReward({ user: user._id, activity: 'Dustbin Full Alert (Scan)', points: 30 });
       showToast(`Alert sent! ${res.data.complaintId} — +30 pts earned 🏆`, 'success');
       setScanLocation(''); setScanBlock('');
       loadProfile(); loadRewards();
@@ -235,11 +240,23 @@ export default function StudentDashboard() {
     if (cpNew !== cpConfirm) { showToast('New passwords do not match.', 'error'); return; }
     if (cpNew.length < 6) { showToast('Password must be at least 6 characters.', 'warning'); return; }
     try {
-      await changePassword(user.userId, { oldPassword: cpOld, newPassword: cpNew });
+      await changePassword(user._id, { oldPassword: cpOld, newPassword: cpNew });
       showToast('Password updated successfully! ✅');
       setCpOld(''); setCpNew(''); setCpConfirm('');
     } catch (err) {
       showToast(err.response?.data?.message || 'Error', 'error');
+    }
+  };
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    if (!upName.trim()) { showToast('Name cannot be empty.', 'error'); return; }
+    try {
+      await updateUser(user._id, { name: upName.trim() });
+      showToast('Profile updated successfully! ✅');
+      loadProfile(); // reload profile to show new name
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Error updating profile', 'error');
     }
   };
 
@@ -295,14 +312,24 @@ export default function StudentDashboard() {
                     ))
                   )}
                 </div>
-                <div className="card">
-                  <div className="section-title"><div className="section-title-bar"></div><h2>Change Password</h2></div>
-                  <form onSubmit={handleChangePassword} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '.9rem' }}>
-                    <div className="form-group"><label className="form-label">Current Password</label><input className="form-input" type="password" value={cpOld} onChange={(e) => setCpOld(e.target.value)} placeholder="Current password" /></div>
-                    <div className="form-group"><label className="form-label">New Password</label><input className="form-input" type="password" value={cpNew} onChange={(e) => setCpNew(e.target.value)} placeholder="New password" /></div>
-                    <div className="form-group"><label className="form-label">Confirm New Password</label><input className="form-input" type="password" value={cpConfirm} onChange={(e) => setCpConfirm(e.target.value)} placeholder="Repeat new password" /></div>
-                    <button type="submit" className="btn btn-primary">🔐 Update Password</button>
-                  </form>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  <div className="card">
+                    <div className="section-title"><div className="section-title-bar"></div><h2>Update Profile</h2></div>
+                    <form onSubmit={handleUpdateProfile} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '.9rem' }}>
+                      <div className="form-group"><label className="form-label">Full Name</label><input className="form-input" type="text" value={upName} onChange={(e) => setUpName(e.target.value)} placeholder="Your Name" /></div>
+                      <button type="submit" className="btn btn-primary">✏️ Update Name</button>
+                    </form>
+                  </div>
+
+                  <div className="card">
+                    <div className="section-title"><div className="section-title-bar"></div><h2>Change Password</h2></div>
+                    <form onSubmit={handleChangePassword} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '.9rem' }}>
+                      <div className="form-group"><label className="form-label">Current Password</label><input className="form-input" type="password" value={cpOld} onChange={(e) => setCpOld(e.target.value)} placeholder="Current password" /></div>
+                      <div className="form-group"><label className="form-label">New Password</label><input className="form-input" type="password" value={cpNew} onChange={(e) => setCpNew(e.target.value)} placeholder="New password" /></div>
+                      <div className="form-group"><label className="form-label">Confirm New Password</label><input className="form-input" type="password" value={cpConfirm} onChange={(e) => setCpConfirm(e.target.value)} placeholder="Repeat new password" /></div>
+                      <button type="submit" className="btn btn-primary">🔐 Update Password</button>
+                    </form>
+                  </div>
                 </div>
               </div>
             </section>

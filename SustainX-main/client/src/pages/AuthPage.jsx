@@ -15,7 +15,7 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
 
   // Login fields
-  const [loginId, setLoginId] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
   const [loginPass, setLoginPass] = useState('');
   const [showPass, setShowPass] = useState(false);
 
@@ -28,7 +28,6 @@ export default function AuthPage() {
 
   // Forgot Password fields
   const [isForgotOpen, setIsForgotOpen] = useState(false);
-  const [forgotId, setForgotId] = useState('');
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotSuccess, setForgotSuccess] = useState('');
@@ -44,13 +43,13 @@ export default function AuthPage() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
-    if (!loginId.trim() || !loginPass) {
-      setError('Please provide User ID and password');
+    if (!loginEmail.trim() || !loginPass) {
+      setError('Please provide Email and password');
       return;
     }
     setLoading(true);
     try {
-      await login(loginId.trim().toUpperCase(), loginPass, selectedRole);
+      await login(loginEmail.trim().toLowerCase(), loginPass, selectedRole);
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed');
     } finally {
@@ -95,13 +94,13 @@ export default function AuthPage() {
     e.preventDefault();
     setForgotError('');
     setForgotSuccess('');
-    if (!forgotId || !forgotEmail) {
-      setForgotError('Please provide both User ID and Email.');
+    if (!forgotEmail) {
+      setForgotError('Please provide your Email.');
       return;
     }
     setForgotLoading(true);
     try {
-      const res = await forgotPasswordApi({ userId: forgotId, email: forgotEmail });
+      const res = await forgotPasswordApi({ email: forgotEmail });
       setForgotSuccess(res.data.message);
     } catch (err) {
       setForgotError(err.response?.data?.message || 'Request failed. Please verify your details.');
@@ -190,10 +189,10 @@ export default function AuthPage() {
 
                 <form onSubmit={handleLogin} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '.95rem' }}>
                   <div className="form-group">
-                    <label className="form-label">User ID</label>
+                    <label className="form-label">Email Address</label>
                     <div className="input-icon-wrap">
-                      <span className="input-icon">👤</span>
-                      <input className="form-input" type="text" placeholder="Enter your User ID" value={loginId} onChange={(e) => setLoginId(e.target.value)} />
+                      <span className="input-icon">📧</span>
+                      <input className="form-input" type="email" placeholder="Enter your email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
                     </div>
                   </div>
                   <div className="form-group">
@@ -313,21 +312,11 @@ export default function AuthPage() {
           ) : (
             <form onSubmit={handleForgotSubmit}>
               <p className="text-muted" style={{ fontSize: '.85rem', marginBottom: '1.2rem' }}>
-                Enter your User ID and registered email address. We'll send instructions to reset your password.
+                Enter your registered email address. We'll send instructions to reset your password.
               </p>
               
               {forgotError && <div className="auth-error" style={{ marginBottom: '1rem' }}>{forgotError}</div>}
               
-              <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label className="form-label">User ID</label>
-                <input 
-                  className="form-input" 
-                  type="text" 
-                  placeholder="e.g. ALEX123" 
-                  value={forgotId} 
-                  onChange={(e) => setForgotId(e.target.value)} 
-                />
-              </div>
               <div className="form-group" style={{ marginBottom: '1.5rem' }}>
                 <label className="form-label">Email Address</label>
                 <input 

@@ -134,7 +134,6 @@ const redeemItem = async (req, res) => {
 
     const order = await Order.create({
       orderId,
-      userId: user.userId,
       userName: user.name,
       user: user._id, // Relation using _id
       block: user.block,
@@ -145,7 +144,7 @@ const redeemItem = async (req, res) => {
       expiresAt,
     });
 
-    console.log(`🛒 [ORDER] Created: ${order.orderId} | Block: ${order.block} | User: ${user.userId}`);
+    console.log(`🛒 [ORDER] Created: ${order.orderId} | Block: ${order.block} | User: ${user._id}`);
 
     res.status(201).json({
       order,
@@ -169,7 +168,7 @@ const getOrders = async (req, res) => {
 
     // Students only see their own orders
     if (req.user.role === 'student') {
-      query.userId = req.user.userId;
+      query.user = req.user._id;
     }
 
     // Collectors: see unassigned orders OR orders assigned specifically to me (NO block filter)
@@ -186,7 +185,7 @@ const getOrders = async (req, res) => {
     }
 
     const orders = await Order.find(query)
-      .populate('user', 'name email userId')
+      .populate('user', 'name email')
       .populate('item', 'name image pointsRequired')
       .sort({ createdAt: -1 });
 
@@ -213,7 +212,7 @@ const updateOrderStatus = async (req, res) => {
 
     // ── Security Check (Collector) ──
     if (req.user.role === 'collector' && order.block !== req.user.block) {
-      console.warn(`🚫 [ACCESS DENIED] Collector ${req.user.userId} tried to update Order ${order.orderId} (Block ${order.block})`);
+      console.warn(`🚫 [ACCESS DENIED] Collector ${req.user._id} tried to update Order ${order.orderId} (Block ${order.block})`);
       return res.status(403).json({ message: 'Access denied: cannot update orders from another block' });
     }
 
@@ -223,7 +222,7 @@ const updateOrderStatus = async (req, res) => {
         return res.status(400).json({ message: 'This pickup order has expired. Please contact admin for a reset.' });
       }
       if (order.failedAttempts >= 3) {
-        await createAuditLog(order.orderId, 'locked', req.user.userId, 'Too many failed attempts');
+        await createAuditLog(order.orderId, 'locked', req.user._id, 'Too many failed attempts');
         return res.status(400).json({ message: 'Order is locked due to multiple failed verification attempts.' });
       }
     }
@@ -238,7 +237,7 @@ const updateOrderStatus = async (req, res) => {
       if (verificationCode.toUpperCase() !== order.pickupCode.toUpperCase()) {
         order.failedAttempts += 1;
         await order.save();
-        await createAuditLog(order.orderId, 'failed_verification', req.user.userId, `Attempt ${order.failedAttempts}`);
+        await createAuditLog(order.orderId, 'failed_verification', req.user._id, `Attempt ${order.failedAttempts}`);
         return res.status(400).json({ 
           message: `Invalid pickup code. ${3 - order.failedAttempts} attempts remaining.`,
           attemptsRemaining: 3 - order.failedAttempts
@@ -246,7 +245,7 @@ const updateOrderStatus = async (req, res) => {
       }
       // Success!
       order.deliveredAt = new Date();
-      await createAuditLog(order.orderId, 'delivered', req.user.userId);
+      await createAuditLog(order.orderId, 'delivered', req.user._id);
     }
 
     // ── Strict Status Transition Validation ──
@@ -267,8 +266,8 @@ const updateOrderStatus = async (req, res) => {
     // ── Reward Logic (Collector only) ──
     if (status === 'delivered' && req.user.role === 'collector' && !order.rewardGiven) {
       // Atomic increment of collector's rewardPoints
-      const collector = await User.findOneAndUpdate(
-        { userId: req.user.userId },
+      const collector = await User.findByIdAndUpdate(
+        req.user._id,
         { $inc: { rewardPoints: 20 } },
         { new: true }
       );
@@ -277,12 +276,11 @@ const updateOrderStatus = async (req, res) => {
         order.rewardGiven = true;
         // Create Reward Log entry
         await Reward.create({
-          userId: req.user.userId,
           user: req.user._id, // Relation using _id
           activity: `Delivered Order ${order.orderId}`,
           points: 20,
         });
-        console.log(`🏆 [REWARD] Collector ${req.user.userId} earned 20 pts for delivery ${order.orderId}`);
+        console.log(`🏆 [REWARD] Collector ${req.user._id} earned 20 pts for delivery ${order.orderId}`);
       }
     }
 
@@ -301,22 +299,22 @@ const getOrderById = async (req, res) => {
   try {
     const order = await Order.findOne({
       orderId: req.params.id.toUpperCase(),
-    }).populate('user', 'userId name email');
+    }).populate('user', 'name email');
 
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
     // Security: collector/admin can see, student only if it's their own
-    if (req.user.role === 'student' && order.userId !== req.user.userId) {
+    if (req.user.role === 'student' && order.user._id.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
     if (req.user.role === 'collector' && order.block !== req.user.block) {
-      console.warn(`🚫 [ACCESS DENIED] Collector ${req.user.userId} tried to view Order ${order.orderId} (Block ${order.block})`);
+      console.warn(`🚫 [ACCESS DENIED] Collector ${req.user._id} tried to view Order ${order.orderId} (Block ${order.block})`);
       return res.status(403).json({ message: 'Access denied: order belongs to another block' });
     }
 
     // Audit Log: Viewed
-    await createAuditLog(order.orderId, 'viewed', req.user.userId);
+    await createAuditLog(order.orderId, 'viewed', req.user._id);
 
     res.json(order);
   } catch (err) {
@@ -356,7 +354,7 @@ const assignOrder = async (req, res) => {
 
     await order.save();
     
-    console.log(`🤝 [SUCCESS] Order ${order.orderId} taken by Collector ${req.user.userId}`);
+    console.log(`🤝 [SUCCESS] Order ${order.orderId} taken by Collector ${req.user._id}`);
     res.json(order);
   } catch (err) {
     console.error("ASSIGN ERROR:", err);

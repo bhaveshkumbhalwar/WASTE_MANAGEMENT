@@ -7,11 +7,7 @@ const orderSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
-    userId: {
-      type: String,
-      required: true,
-      index: true,
-    },
+
     userName: {
       type: String,
       required: true,

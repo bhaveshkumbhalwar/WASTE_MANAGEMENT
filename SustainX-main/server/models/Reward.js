@@ -2,11 +2,7 @@ const mongoose = require('mongoose');
 
 const rewardSchema = new mongoose.Schema(
   {
-    userId: {
-      type: String,
-      required: true,
-      index: true,
-    },
+
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

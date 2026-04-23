@@ -12,7 +12,7 @@ const getDashboardStats = async (req, res) => {
       if (!req.user.block) return res.json({ total: 0, pending: 0, progress: 0, done: 0, students: 0, collectors: 0 });
       complaintMatch.block = req.user.block;
     } else if (req.user.role === 'student') {
-      complaintMatch.studentId = req.user.userId;
+      complaintMatch.user = req.user._id;
     }
 
     const [statusAgg, roleAgg, orderStats] = await Promise.all([
