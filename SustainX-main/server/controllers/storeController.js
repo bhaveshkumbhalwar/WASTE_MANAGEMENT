@@ -192,9 +192,16 @@ const getOrders = async (req, res) => {
       query.status = req.query.status;
     }
 
+    let select = '';
+    // Collector can only see code AFTER delivery (for receipt)
+    if (req.user.role === 'collector' && req.query.status !== 'delivered') {
+      select = '-pickupCode';
+    }
+
     const orders = await Order.find(query)
       .populate('user', 'name email')
       .populate('item', 'name image pointsRequired')
+      .select(select)
       .sort({ createdAt: -1 });
 
     res.json(orders);
@@ -247,8 +254,7 @@ const updateOrderStatus = async (req, res) => {
         await order.save();
         await createAuditLog(order.orderId, 'failed_verification', req.user._id, `Attempt ${order.failedAttempts}`);
         return res.status(400).json({ 
-          message: `Invalid pickup code. ${3 - order.failedAttempts} attempts remaining.`,
-          attemptsRemaining: 3 - order.failedAttempts
+          message: 'Invalid pickup code. Please check your code and try again.',
         });
       }
       // Success!
@@ -305,11 +311,22 @@ const updateOrderStatus = async (req, res) => {
 // @route   GET /api/orders/:id
 const getOrderById = async (req, res) => {
   try {
+    let select = '';
+    // Fetch first to check status, or just use a conditional selection
+    // Since getOrderById usually fetches a specific order, we can check status after fetch
+    // But .select() happens during fetch. Let's fetch the status first or just select it and then filter.
+    // Actually, we can just fetch the whole thing and null out the code in the response if not delivered.
+    
     const order = await Order.findOne({
       orderId: req.params.id.toUpperCase(),
     }).populate('user', 'name email');
 
     if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    // Hide code for collectors if NOT delivered
+    if (req.user.role === 'collector' && order.status !== 'delivered') {
+      order.pickupCode = undefined;
+    }
 
     // Security: collector/admin can see, student only if it's their own
     if (req.user.role === 'student' && order.user._id.toString() !== req.user._id.toString()) {

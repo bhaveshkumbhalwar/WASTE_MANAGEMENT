@@ -2457,3 +2457,131 @@ tbody td {
 }
 
 .print-only { display: none; }
+
+/* ── Info Labels ────────────────────────────────────────── */
+.info-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--txt-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.3rem;
+  display: block;
+  opacity: 1 !important; /* Ensure full visibility */
+}
+
+/* ── Print Styles ────────────────────────────────────────── */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #order-detail-modal, #order-detail-modal * {
+    visibility: visible;
+  }
+  #order-detail-modal {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+  .btn, .copy-btn {
+    display: none !important;
+  }
+  .info-label {
+    color: #333 !important;
+    opacity: 1 !important;
+  }
+  .text-muted {
+    color: #555 !important;
+  }
+  .pickup-code {
+    background: #000 !important;
+    color: #fff !important;
+    -webkit-print-color-adjust: exact;
+  }
+  .verification-box, .order-status-tracker {
+    border: 1px solid #ccc !important;
+    background: #fff !important;
+  }
+  h1, h2, h3 {
+    color: #000 !important;
+  }
+}
+
+/* ── Pickup Verification ──────────────────────────────────── */
+.verification-box {
+  background: linear-gradient(135deg, rgba(255, 163, 0, 0.08), rgba(255, 163, 0, 0.03));
+  border: 2px solid rgba(255, 163, 0, 0.2);
+  border-radius: 16px;
+  padding: 1.5rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.verification-input {
+  width: 100%;
+  max-width: 280px;
+  margin: 1.2rem auto 0;
+  display: block;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: 0.8rem;
+  text-align: center;
+  text-transform: uppercase;
+  padding: 0.8rem;
+  border: 3px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  transition: all 0.3s ease;
+  color: var(--clr-navy);
+}
+
+.verification-input::placeholder {
+  opacity: 0.2;
+}
+
+.verification-input:focus {
+  border-color: var(--clr-amber);
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(255, 163, 0, 0.15);
+  transform: scale(1.02);
+}
+
+.delivery-success-wrapper {
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.success-checkmark {
+  width: 80px;
+  height: 80px;
+  background: var(--clr-green);
+  color: #fff;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 3rem;
+  margin: 0 auto 1.5rem;
+  animation: scaleUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes scaleUp {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+
+.pickup-code {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.8rem;
+  font-weight: 800;
+  letter-spacing: 0.3rem;
+  background: #000;
+  color: #fff;
+  display: inline-block;
+  padding: 0.5rem 1.2rem;
+  border-radius: 8px;
+  margin-top: 0.5rem;
+}

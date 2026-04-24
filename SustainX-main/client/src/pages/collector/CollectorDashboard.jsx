@@ -538,7 +538,7 @@ export default function CollectorDashboard() {
                                 <button className="btn btn-sm btn-amber" onClick={() => handleOrderStatus(o.orderId, 'ready_for_pickup')}>🎁 Ready for Pickup</button>
                               )}
                               {o.status === 'ready_for_pickup' && (
-                                <button className="btn btn-sm btn-primary" onClick={() => handleOrderStatus(o.orderId, 'delivered')}>🚚 Delivered</button>
+                                <button className="btn btn-sm btn-primary" onClick={() => handleViewDetails(o.orderId)}>🚚 Deliver</button>
                               )}
                               {o.status === 'delivered' && (
                                 <span className="text-muted" style={{ fontSize: '.8rem' }}>Claimed</span>
@@ -916,14 +916,14 @@ export default function CollectorDashboard() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'var(--bg-muted, rgba(0,0,0,.03))', borderRadius: '8px', gridColumn: '1 / -1' }}>
                 <div style={{ fontSize: '2.5rem' }}>📦</div>
                 <div>
-                  <div style={{ fontSize: '.75rem', fontWeight: 700, color: 'var(--txt-muted)', textTransform: 'uppercase' }}>Item Ordered</div>
+                  <div className="info-label">Item Ordered</div>
                   <div style={{ fontSize: '1.1rem', fontWeight: 800 }}>{selectedOrder.itemName}</div>
                 </div>
               </div>
               <div>
                 <div className="info-label">👤 Customer</div>
                 <div style={{ fontWeight: 700 }}>{selectedOrder.user?.name || 'Unknown'}</div>
-                <div style={{ fontSize: '.85rem', color: 'var(--txt-muted)' }}>{selectedOrder.user?.email || 'N/A'}</div>
+                <div style={{ fontSize: '.85rem', color: 'var(--txt-secondary)', fontWeight: 500 }}>{selectedOrder.user?.email || 'N/A'}</div>
               </div>
               <div>
                 <div className="info-label">🆔 User ID</div>
@@ -944,30 +944,18 @@ export default function CollectorDashboard() {
               </div>
             </div>
 
-            {selectedOrder.status !== 'delivered' && (
-              <div style={{ textAlign: 'center', padding: '1.5rem', background: 'var(--bg-sidebar)', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '1.5rem' }}>
-                <div className="info-label" style={{ marginBottom: '.5rem' }}>🔐 Pickup Code</div>
-                <div className="pickup-code">{selectedOrder.pickupCode || '—'}</div>
-                <br />
-                <button 
-                  className="copy-btn" 
-                  onClick={() => {
-                    navigator.clipboard.writeText(selectedOrder.pickupCode);
-                    showToast('Code copied to clipboard!', 'info');
-                  }}
-                >
-                  📋 Copy Code
-                </button>
-                
-                <div className="qr-container">
-                  <img 
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${selectedOrder.pickupCode}`} 
-                    alt="Order QR Code" 
-                    style={{ display: 'block', width: '120px', height: '120px' }}
-                  />
-                </div>
-                <p style={{ fontSize: '.75rem', color: 'var(--txt-muted)' }}>
-                  Expires: {selectedOrder.expiresAt ? new Date(selectedOrder.expiresAt).toLocaleString() : 'N/A'}
+            {selectedOrder.status === 'delivered' && (
+              <div style={{ textAlign: 'center', padding: '1rem', background: 'var(--bg-muted, rgba(0,0,0,.02))', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '1.5rem' }}>
+                <div className="info-label" style={{ marginBottom: '.3rem' }}>🔐 Verified Pickup Code</div>
+                <div className="pickup-code" style={{ fontSize: '1.4rem' }}>{selectedOrder.pickupCode || 'VERIFIED'}</div>
+                <div style={{ fontSize: '.7rem', color: 'var(--clr-green)', fontWeight: 700, marginTop: '.4rem' }}>✓ IDENTITY VERIFIED</div>
+              </div>
+            )}
+
+            {selectedOrder.status !== 'delivered' && selectedOrder.status !== 'ready_for_pickup' && (
+              <div style={{ textAlign: 'center', padding: '1rem', background: 'var(--bg-muted, rgba(0,0,0,.02))', borderRadius: '8px', marginBottom: '1.5rem', border: '1px solid var(--border)' }}>
+                <p style={{ margin: 0, fontSize: '.85rem', color: 'var(--txt-muted)' }}>
+                  Pickup details will be available once the order is <strong>Ready for Pickup</strong>.
                 </p>
               </div>
             )}
@@ -976,7 +964,7 @@ export default function CollectorDashboard() {
             {selectedOrder.status === 'ready_for_pickup' && (
               <div className="verification-box">
                 <div style={{ fontWeight: 700, color: 'var(--clr-amber)', fontSize: '.9rem' }}>⚠️ Delivery Verification Required</div>
-                <p className="text-muted" style={{ fontSize: '.8rem' }}>Enter the student's pickup code. <strong>{3 - (selectedOrder.failedAttempts || 0)} attempts left.</strong></p>
+                <p className="text-muted" style={{ fontSize: '.8rem' }}>Enter the student's pickup code.</p>
                 <input 
                   type="text" 
                   className="verification-input" 

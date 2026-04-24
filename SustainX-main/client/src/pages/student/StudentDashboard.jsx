@@ -759,7 +759,7 @@ export default function StudentDashboard() {
                         <div className="order-points-badge" style={{ fontSize: '.9rem', padding: '.4rem .8rem' }}>⭐ {o.pointsUsed} pts</div>
                         {(o.failedAttempts || 0) > 0 && (
                           <div style={{ fontSize: '.65rem', color: 'var(--clr-red)', fontWeight: 700, marginTop: '.3rem' }}>
-                            ⚠️ {3 - o.failedAttempts} attempts left
+                            ⚠️ Invalid attempts detected
                           </div>
                         )}
                       </div>
