@@ -114,7 +114,7 @@ const submitComplaint = async (req, res) => {
       assignedTo = collectors[randomIdx]._id;
     }
 
-    const image = req.file ? `/uploads/${req.file.filename}` : "";
+    const image = req.file ? req.file.path : "";
 
     // Step 5: Retry logic for collision safety
     let complaint;
@@ -266,7 +266,7 @@ const completeComplaint = async (req, res) => {
 
     // Update complaint
     complaint.status = 'completed';
-    complaint.completionImage = `/uploads/${req.file.filename}`;
+    complaint.completionImage = req.file.path;
 
     complaint.statusHistory.push({
       status: 'completed',

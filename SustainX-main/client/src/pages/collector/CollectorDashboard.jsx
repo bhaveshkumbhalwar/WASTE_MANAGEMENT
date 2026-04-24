@@ -414,7 +414,7 @@ export default function CollectorDashboard() {
                   <div className="complaint-card" key={c.complaintId}>
                     <div className="complaint-img">
                       {c.image ? (
-                        <img src={`/uploads/${c.image}`} alt="complaint" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }} />
+                        <img src={c.image} alt="complaint" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }} />
                       ) : (
                         '🗑️'
                       )}
@@ -734,7 +734,7 @@ export default function CollectorDashboard() {
                 <div className="info-label" style={{ marginBottom: '.4rem' }}>📸 Initial Photo</div>
                 {selectedComplaint.image ? (
                   <img
-                    src={`/uploads/${selectedComplaint.image}`}
+                    src={selectedComplaint.image}
                     alt="Initial"
                     style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border)' }}
                   />
@@ -749,7 +749,6 @@ export default function CollectorDashboard() {
                     src={`${selectedComplaint.completionImage}`}
                     alt="Completion"
                     style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '8px', border: '2px solid var(--clr-green)' }}
-                    onError={(e) => { e.target.src = `http://localhost:5000${selectedComplaint.completionImage}`; }}
                   />
                 </div>
               )}

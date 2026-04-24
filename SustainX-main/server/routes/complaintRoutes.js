@@ -18,7 +18,7 @@ const {
   completeComplaint,
 } = require('../controllers/complaintController');
 const { protect, authorize } = require('../middleware/authMiddleware');
-const upload = require('../middleware/uploadMiddleware');
+const upload = require('../middleware/upload');
 
 const router = express.Router();
 

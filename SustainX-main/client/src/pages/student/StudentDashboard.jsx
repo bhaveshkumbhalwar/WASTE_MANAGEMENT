@@ -209,11 +209,14 @@ export default function StudentDashboard() {
     e.preventDefault();
     if (!scanLocation || !scanBlock) { showToast('Please enter location and select block.', 'warning'); return; }
     try {
-      const res = await submitComplaint({
-        location: scanLocation, wasteType: 'Dustbin Overflow',
-        description: 'Dustbin full alert via Quick Scan.', type: 'scan',
-        block: scanBlock,
-      });
+      const formData = new FormData();
+      formData.append('location', scanLocation);
+      formData.append('wasteType', 'Dustbin Overflow');
+      formData.append('description', 'Dustbin full alert via Quick Scan.');
+      formData.append('type', 'scan');
+      formData.append('block', scanBlock);
+
+      const res = await submitComplaint(formData);
       await addReward({ user: user._id, activity: 'Dustbin Full Alert (Scan)', points: 30 });
       showToast(`Alert sent! ${res.data.complaintId} — +30 pts earned 🏆`, 'success');
       setScanLocation(''); setScanBlock('');
@@ -473,7 +476,6 @@ export default function StudentDashboard() {
                           src={trackResult.completionImage}
                           alt="Proof"
                           style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--border)' }}
-                          onError={(e) => { e.target.src = `http://localhost:5000${trackResult.completionImage}`; }}
                         />
                       </div>
                     )}
