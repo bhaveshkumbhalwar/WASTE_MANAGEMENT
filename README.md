@@ -44,7 +44,7 @@ npm start
 ---
 
 ## 🌍 Live Demo
-(Add your deployed link)
+[](https://sustainx-frontend-7xw0.onrender.com)
 
 ---
 
