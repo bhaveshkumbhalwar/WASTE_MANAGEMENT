@@ -79,6 +79,10 @@ const complaintSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    completionImage: {
+      type: String,
+      default: null,
+    },
     rewardGiven: {
       type: Boolean,
       default: false,

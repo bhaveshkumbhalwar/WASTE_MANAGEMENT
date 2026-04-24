@@ -28,16 +28,19 @@ const login = async (req, res) => {
     const user = await User.findOne({ email: email.toLowerCase() });
 
     if (!user) {
+      console.log(`❌ [LOGIN]: User not found: ${email}`);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
+      console.log(`❌ [LOGIN]: Password mismatch for ${email}`);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     // Role mismatch check
     if (role && user.role !== role) {
+      console.log(`❌ [LOGIN]: Role mismatch for ${email}. Expected ${role}, got ${user.role}`);
       return res.status(401).json({
         message: `This account is not a ${role} account. Please select the correct role.`,
       });

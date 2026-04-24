@@ -285,10 +285,10 @@ export default function StudentDashboard() {
                   <div className="profile-avatar">{getInitials(profile?.name)}</div>
                 </div>
                 <div className="profile-info">
-                  <h3>{profile?.name || '—'}</h3>
-                  <p style={{ marginBottom: '.4rem' }}>{profile?.email}</p>
+                  <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--clr-navy)' }}>{profile?.name || user?.name || 'SustainX User'}</h3>
+                  <p style={{ marginBottom: '.4rem', color: 'var(--txt-muted)' }}>{profile?.email || user?.email}</p>
                   <div className="profile-meta">
-                    <span className="profile-meta-tag">📚 {profile?.dept || '—'}</span>
+                    <span className="profile-meta-tag">📚 {profile?.dept || 'General'}</span>
                     <span className="profile-meta-tag">📋 {recentComplaints.length} Complaints</span>
                     <span className="profile-meta-tag">🏆 {profile?.rewardPoints || 0} pts</span>
                   </div>
@@ -464,6 +464,19 @@ export default function StudentDashboard() {
                   )}
 
                   <div className="timeline">
+                    {trackResult.status === 'completed' && trackResult.completionImage && (
+                      <div style={{ marginBottom: '1.2rem', padding: '.8rem', borderRadius: '12px', background: 'rgba(145,208,108,.08)', border: '1px solid rgba(145,208,108,.2)' }}>
+                        <div style={{ fontSize: '.75rem', fontWeight: 700, color: 'var(--clr-green)', textTransform: 'uppercase', marginBottom: '.5rem', display: 'flex', alignItems: 'center', gap: '.3rem' }}>
+                          <span>✅ Completion Proof</span>
+                        </div>
+                        <img
+                          src={trackResult.completionImage}
+                          alt="Proof"
+                          style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--border)' }}
+                          onError={(e) => { e.target.src = `http://localhost:5000${trackResult.completionImage}`; }}
+                        />
+                      </div>
+                    )}
                     {[
                       { label: 'Complaint Submitted', desc: `Filed on ${fmtDate(trackResult.createdAt)}`, done: true },
                       { label: 'Assigned to Collector', desc: 'Collector notified', done: trackResult.status !== 'pending' },

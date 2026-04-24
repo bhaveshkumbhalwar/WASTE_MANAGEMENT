@@ -7,8 +7,16 @@ const OrderLog = require('../models/OrderLog');
 
 // ── Generate sequential order ID ──
 const generateOrderId = async () => {
-  const count = await Order.countDocuments();
-  return 'ORD-' + String(count + 1).padStart(4, '0');
+  const lastOrder = await Order.findOne({ orderId: /^ORD-/ }).sort({ orderId: -1 });
+  let nextNum = 1;
+  if (lastOrder && lastOrder.orderId) {
+    const parts = lastOrder.orderId.split('-');
+    if (parts.length >= 2) {
+      const lastNum = parseInt(parts[1]);
+      if (!isNaN(lastNum)) nextNum = lastNum + 1;
+    }
+  }
+  return 'ORD-' + String(nextNum).padStart(4, '0');
 };
 
 // HELPER: Audit logging

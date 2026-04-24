@@ -54,6 +54,11 @@ export const submitComplaint = (data) => {
 export const updateComplaintStatus = (id, data) =>
   API.put(`/complaints/${id}/status`, data);
 
+export const completeComplaintApi = (id, data) =>
+  API.post(`/complaints/complete/${id}`, data, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+
 // ================= REWARDS =================
 export const getRewards = (params) =>
   API.get('/rewards', { params });

@@ -3,10 +3,22 @@ const User = require('../models/User');
 const Reward = require('../models/Reward');
 
 
-// Generate sequential complaint ID
+// Generate robust complaint ID
 const generateComplaintId = async () => {
-  const count = await Complaint.countDocuments();
-  return 'WMS-' + String(count + 1).padStart(4, '0');
+  // Sort by complaintId descending to get the highest alphanumeric ID (WMS-XXXX)
+  // Filtering by prefix ensures we don't mix up with IOT- IDs
+  const lastComplaint = await Complaint.findOne({ complaintId: /^WMS-/ })
+    .sort({ complaintId: -1 });
+    
+  let nextNum = 1;
+  if (lastComplaint && lastComplaint.complaintId) {
+    const parts = lastComplaint.complaintId.split('-');
+    if (parts.length >= 2) {
+      const lastNum = parseInt(parts[1]);
+      if (!isNaN(lastNum)) nextNum = lastNum + 1;
+    }
+  }
+  return 'WMS-' + String(nextNum).padStart(4, '0');
 };
 
 // @desc    Get complaints (role-based filtered at DB query level)
@@ -23,13 +35,13 @@ const getComplaints = async (req, res) => {
     // ══ MANDATORY role-based filters (CANNOT be overridden) ══
     if (req.user.role === 'collector') {
       if (!req.user.block) {
-        console.warn(`⚠️ [COMPLAINTS] Collector ${req.user._id} has NO block → empty result`);
+        console.warn(`⚠️ [COMPLAINTS] Collector ${req.user.id} has NO block → empty result`);
         return res.json([]);
       }
       // CRITICAL: This is a MongoDB query filter, NOT JS filtering
       query.block = req.user.block;
     } else if (req.user.role === 'student') {
-      query.user = req.user._id;
+      query.user = req.user.id;
     }
     // admin: no mandatory filter
 
@@ -45,7 +57,7 @@ const getComplaints = async (req, res) => {
     }
 
     // Debug log
-    console.log(`📋 [GET /complaints] User: ${req.user._id} | Role: ${req.user.role} | Block: ${JSON.stringify(req.user.block)} | Query:`, JSON.stringify(query));
+    console.log(`📋 [GET /complaints] User: ${req.user.id} | Role: ${req.user.role} | Block: ${JSON.stringify(req.user.block)} | Query:`, JSON.stringify(query));
 
     const complaints = await Complaint.find(query)
       .populate('user', 'name email')
@@ -90,59 +102,62 @@ const getComplaintById = async (req, res) => {
 // @route   POST /api/complaints
 const submitComplaint = async (req, res) => {
   try {
-    const { location, wasteType, description, block, type, locationData } = req.body;
+    console.log("Submit Complaint Body:", req.body);
+    const { location, block, wasteType, description, type, locationData } = req.body;
+    const normalizedBlock = (block || 'A').toUpperCase();
 
-    if (!location || !wasteType || !description || !block) {
-      return res.status(400).json({ message: 'Please fill all required fields (including block)' });
-    }
-
-    const validBlocks = ['A', 'B', 'C', 'D', 'E'];
-    const normalizedBlock = block.toUpperCase();
-    if (!validBlocks.includes(normalizedBlock)) {
-      return res.status(400).json({ message: 'Invalid block. Must be A, B, C, D, or E.' });
-    }
-
-    const complaintId = await generateComplaintId();
-
-    // Auto-assign to a collector with the same block
-    let assignedTo = null;
+    // Auto-assign logic
     const collectors = await User.find({ role: 'collector', block: normalizedBlock });
+    let assignedTo = null;
     if (collectors.length > 0) {
       const randomIdx = Math.floor(Math.random() * collectors.length);
       assignedTo = collectors[randomIdx]._id;
     }
 
-    // Image from multer (optional)
-    const image = req.file ? req.file.filename : null;
+    const image = req.file ? `/uploads/${req.file.filename}` : "";
 
-    const complaint = await Complaint.create({
-      complaintId,
-      user: req.user._id,
-      location,
-      wasteType,
-      description,
-      block: normalizedBlock,
-      assignedTo,
-      type: type || 'complaint',
-      locationData: locationData || {},
-      image,
-      statusHistory: [
-        {
+    // Step 5: Retry logic for collision safety
+    let complaint;
+    let attempts = 0;
+    while (attempts < 3) {
+      try {
+        const complaintId = await generateComplaintId();
+        complaint = await Complaint.create({
+          complaintId,
+          user: req.user.id,
+          location,
+          wasteType,
+          description,
+          block: normalizedBlock,
+          image,
+          assignedTo,
+          type: type || 'complaint',
+          locationData: locationData || {},
           status: 'pending',
-          note: assignedTo
-            ? `Complaint submitted and auto-assigned to collector (Block ${normalizedBlock})`
-            : `Complaint submitted (no collector available for Block ${normalizedBlock})`,
-          updatedBy: req.user._id,
-          timestamp: new Date(),
-        },
-      ],
-    });
+          statusHistory: [
+            {
+              status: 'pending',
+              note: 'Complaint submitted',
+              updatedBy: req.user.id,
+            },
+          ],
+        });
+        break; // Success
+      } catch (err) {
+        if (err.code === 11000 && attempts < 2) {
+          console.warn(`⚠️ [RETRY] Collision detected on attempt ${attempts + 1}, retrying...`);
+          attempts++;
+          continue;
+        }
+        throw err; // Re-throw if not collision or too many attempts
+      }
+    }
 
-    console.log(`📋 [POST /complaints] Created ${complaintId} | Block: ${normalizedBlock} | Assigned: ${assignedTo || 'NONE'}`);
-
+    console.log(`📋 [POST /complaints] Created ${complaint.complaintId} | Block: ${normalizedBlock}`);
     res.status(201).json(complaint);
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    console.error("COMPLAINT ERROR:", err);
+    res.status(500).json({ message: err.message });
   }
 };
 
@@ -177,7 +192,7 @@ const updateComplaintStatus = async (req, res) => {
 
     // Security: collector can only update complaints from their block
     if (req.user.role === 'collector' && complaint.block !== req.user.block) {
-      console.warn(`🚫 [ACCESS DENIED] Collector ${req.user._id} (Block ${req.user.block}) tried to update ${complaint.complaintId} (Block ${complaint.block})`);
+      console.warn(`🚫 [ACCESS DENIED] Collector ${req.user.id} (Block ${req.user.block}) tried to update ${complaint.complaintId} (Block ${complaint.block})`);
       return res.status(403).json({ message: 'Access denied: cannot update complaints from another block' });
     }
 
@@ -198,30 +213,20 @@ const updateComplaintStatus = async (req, res) => {
       note: status === 'rejected'
         ? `Rejected: ${rejectionReason.trim()}`
         : (note || `Status updated to ${status}`),
-      updatedBy: req.user._id,
-      timestamp: new Date(),
+      updatedBy: req.user.id,
     });
 
     // ── Reward Logic (Collector only — NOT for rejected) ──
     if (status === 'completed' && req.user.role === 'collector' && !complaint.rewardGiven) {
-      if (complaint.assignedTo && complaint.assignedTo.toString() === req.user._id.toString()) {
-        // Atomic increment using User.findByIdAndUpdate
-        const collector = await User.findByIdAndUpdate(
-          req.user._id,
-          { $inc: { rewardPoints: 10 } },
-          { new: true }
-        );
-
-        if (collector) {
-          complaint.rewardGiven = true;
-          // Create Reward Log
-          await Reward.create({
-            user: req.user._id, // Relation using _id
-            activity: `Resolved Complaint ${complaint.complaintId}`,
-            points: 10,
-          });
-          console.log(`🏆 [REWARD] Collector ${req.user._id} earned 10 pts for ${complaint.complaintId}`);
-        }
+      if (complaint.assignedTo && complaint.assignedTo.toString() === req.user.id) {
+        await User.findByIdAndUpdate(req.user.id, { $inc: { rewardPoints: 10 } });
+        complaint.rewardGiven = true;
+        await Reward.create({
+          user: req.user.id,
+          activity: `Resolved Complaint ${complaint.complaintId}`,
+          points: 10,
+        });
+        console.log(`🏆 [REWARD] Collector ${req.user.id} earned 10 pts for ${complaint.complaintId}`);
       }
     }
 
@@ -230,13 +235,64 @@ const updateComplaintStatus = async (req, res) => {
     res.json(complaint);
   } catch (err) {
     console.error(`❌ [ERROR] updateComplaintStatus failed:`, err);
-    res.status(500).json({ 
-      message: err.message, 
-      type: err.name,
-      id: req.params.id
-    });
+    res.status(500).json({ message: err.message });
   }
 };
 
 
-module.exports = { getComplaints, getComplaintById, submitComplaint, updateComplaintStatus };
+// @desc    Complete complaint with photo (collector only)
+// @route   POST /api/complaints/complete/:id
+const completeComplaint = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'Proof of completion (image) is required.' });
+    }
+
+    const complaint = await Complaint.findOne({
+      complaintId: req.params.id.toUpperCase(),
+    });
+
+    if (!complaint) return res.status(404).json({ message: 'Complaint not found' });
+
+    // Validations
+    if (complaint.status === 'completed') {
+      return res.status(400).json({ message: 'Complaint is already marked as completed.' });
+    }
+
+    // Only assigned collector can complete
+    if (complaint.assignedTo && complaint.assignedTo.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Access denied: only the assigned collector can complete this.' });
+    }
+
+    // Update complaint
+    complaint.status = 'completed';
+    complaint.completionImage = `/uploads/${req.file.filename}`;
+
+    complaint.statusHistory.push({
+      status: 'completed',
+      note: 'Completed with image proof',
+      updatedBy: req.user.id,
+    });
+
+    // Reward Logic (10 points for completion)
+    if (!complaint.rewardGiven) {
+      await User.findByIdAndUpdate(req.user.id, { $inc: { rewardPoints: 10 } });
+      complaint.rewardGiven = true;
+      await Reward.create({
+        user: req.user.id,
+        activity: `Resolved Complaint ${complaint.complaintId} (with proof)`,
+        points: 10,
+      });
+      console.log(`🏆 [REWARD] Collector ${req.user.id} earned 10 pts for ${complaint.complaintId}`);
+    }
+
+    await complaint.save();
+    res.json(complaint);
+  } catch (err) {
+    console.error("COMPLETE COMPLAINT ERROR:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+module.exports = { getComplaints, getComplaintById, submitComplaint, updateComplaintStatus, completeComplaint };

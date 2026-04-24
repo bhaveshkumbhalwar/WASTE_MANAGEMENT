@@ -21,6 +21,7 @@ import {
   updateOrderStatus,
   assignOrderApi,
   updateUser,
+  completeComplaintApi,
 } from '../../services/api';
 
 const NAV_ITEMS = [
@@ -64,6 +65,11 @@ export default function CollectorDashboard() {
 
   // Update Profile
   const [upName, setUpName] = useState('');
+
+  // Proof of Completion
+  const [completionFile, setCompletionFile] = useState(null);
+  const [completionPreview, setCompletionPreview] = useState(null);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   // Store & Rewards
   const [storeItems, setStoreItems] = useState([]);
@@ -204,27 +210,53 @@ export default function CollectorDashboard() {
       showToast('Please provide a reason for rejection.', 'warning');
       return;
     }
+
+    if (modalStatus === 'completed' && !completionFile) {
+      showToast('Proof of completion (photo) is required.', 'warning');
+      return;
+    }
+
     try {
-      const body = { status: modalStatus, note: `Status updated to ${modalStatus}` };
-      if (modalStatus === 'rejected') {
-        body.rejectionReason = rejectionReason.trim();
-      }
-      const res = await updateComplaintStatus(activeId, body);
-      showToast(`Complaint ${activeId} marked as "${modalStatus}" ✅`);
-      
-      // If completed, show reward message
-      if (modalStatus === 'completed' && res.data.rewardGiven) {
-        showToast('🎉 You earned 10 reward points!', 'info');
+      setIsCompleting(true);
+      if (modalStatus === 'completed') {
+        const formData = new FormData();
+        formData.append('image', completionFile);
+        await completeComplaintApi(activeId, formData);
+        showToast(`Complaint ${activeId} marked as completed with proof! ✅`);
+      } else {
+        const body = { status: modalStatus, note: `Status updated to ${modalStatus}` };
+        if (modalStatus === 'rejected') {
+          body.rejectionReason = rejectionReason.trim();
+        }
+        const res = await updateComplaintStatus(activeId, body);
+        showToast(`Complaint ${activeId} marked as "${modalStatus}" ✅`);
+        
+        // If completed (fallback for older logic), show reward message
+        if (modalStatus === 'completed' && res.data.rewardGiven) {
+          showToast('🎉 You earned 10 reward points!', 'info');
+        }
       }
 
       setModalOpen(false);
       setRejectionReason('');
+      setCompletionFile(null);
+      setCompletionPreview(null);
       loadDashboard();
       loadHistory();
       loadStats();
       loadProfile();
     } catch (err) {
       showToast(err.response?.data?.message || 'Error', 'error');
+    } finally {
+      setIsCompleting(false);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setCompletionFile(file);
+      setCompletionPreview(URL.createObjectURL(file));
     }
   };
 
@@ -658,11 +690,11 @@ export default function CollectorDashboard() {
                   <div className="profile-avatar">{getInitials(profile?.name)}</div>
                 </div>
                 <div className="profile-info">
-                  <h3>{profile?.name || '—'}</h3>
-                  <p>{profile?.email}</p>
+                  <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--clr-navy)' }}>{profile?.name || user?.name || 'SustainX Collector'}</h3>
+                  <p style={{ marginBottom: '.4rem', color: 'var(--txt-muted)' }}>{profile?.email || user?.email}</p>
                   <div className="profile-meta">
                     <span className="profile-meta-tag">🚛 Collector</span>
-                    <span className="profile-meta-tag">🏢 Block {profile?.block || '—'}</span>
+                    <span className="profile-meta-tag">🏢 Block {profile?.block || 'All'}</span>
                     <span className="profile-meta-tag">⭐ {rewardTotal} Reward Points</span>
                   </div>
                 </div>
@@ -693,23 +725,35 @@ export default function CollectorDashboard() {
       </main>
 
       {/* Complaint Detail + Status Modal */}
-      <Modal id="update-modal" isOpen={modalOpen} onClose={() => { setModalOpen(false); setRejectionReason(''); }} title="📋 Complaint Details">
+      <Modal id="update-modal" isOpen={modalOpen} onClose={() => { setModalOpen(false); setRejectionReason(''); setCompletionFile(null); setCompletionPreview(null); }} title="📋 Complaint Details">
         {selectedComplaint && (
           <div style={{ marginBottom: '1rem' }}>
             {/* Complaint Image */}
-            {selectedComplaint.image ? (
-              <div style={{ marginBottom: '1rem' }}>
-                <img
-                  src={`/uploads/${selectedComplaint.image}`}
-                  alt="Complaint evidence"
-                  style={{ width: '100%', maxHeight: '280px', objectFit: 'contain', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-card)' }}
-                />
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+              <div style={{ flex: 1 }}>
+                <div className="info-label" style={{ marginBottom: '.4rem' }}>📸 Initial Photo</div>
+                {selectedComplaint.image ? (
+                  <img
+                    src={`/uploads/${selectedComplaint.image}`}
+                    alt="Initial"
+                    style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border)' }}
+                  />
+                ) : (
+                  <div style={{ height: '120px', borderRadius: '8px', background: 'rgba(0,0,0,.04)', display: 'grid', placeItems: 'center', color: 'var(--txt-muted)', fontSize: '.8rem' }}>No image</div>
+                )}
               </div>
-            ) : (
-              <div style={{ marginBottom: '1rem', padding: '1.2rem', borderRadius: '8px', background: 'var(--bg-muted, rgba(0,0,0,.04))', textAlign: 'center', color: 'var(--txt-muted)', fontSize: '.85rem' }}>
-                🖼️ No image provided
-              </div>
-            )}
+              {selectedComplaint.status === 'completed' && selectedComplaint.completionImage && (
+                <div style={{ flex: 1 }}>
+                  <div className="info-label" style={{ marginBottom: '.4rem', color: 'var(--clr-green)' }}>✅ Completion Proof</div>
+                  <img
+                    src={`${selectedComplaint.completionImage}`}
+                    alt="Completion"
+                    style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '8px', border: '2px solid var(--clr-green)' }}
+                    onError={(e) => { e.target.src = `http://localhost:5000${selectedComplaint.completionImage}`; }}
+                  />
+                </div>
+              )}
+            </div>
 
             {/* Complaint Details Grid */}
             <div className="grid-2" style={{ gap: '.8rem', marginBottom: '1rem', fontSize: '.88rem' }}>
@@ -780,11 +824,34 @@ export default function CollectorDashboard() {
               </div>
             )}
 
+            {modalStatus === 'completed' && (
+              <div className="form-group mb-2">
+                <label className="form-label">Upload Proof of Completion <span style={{ color: 'var(--clr-red)' }}>*</span></label>
+                <input
+                  type="file"
+                  className="form-input"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                />
+                {completionPreview && (
+                  <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                    <p style={{ fontSize: '.75rem', color: 'var(--txt-muted)', marginBottom: '.5rem' }}>Preview:</p>
+                    <img
+                      src={completionPreview}
+                      alt="Completion preview"
+                      style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', borderRadius: '8px', border: '1px solid var(--border)' }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
             <button
-              className={`btn btn-full ${modalStatus === 'rejected' ? 'btn-red' : 'btn-primary'}`}
+              className={`btn btn-full ${modalStatus === 'rejected' ? 'btn-red' : 'btn-primary'} ${isCompleting ? 'btn-disabled' : ''}`}
               onClick={handleUpdateStatus}
+              disabled={isCompleting || (modalStatus === 'completed' && !completionFile)}
             >
-              {modalStatus === 'rejected' ? '❌ Reject Complaint' : '✅ Save Status'}
+              {isCompleting ? '⌛ Processing...' : modalStatus === 'rejected' ? '❌ Reject Complaint' : '✅ Save Status'}
             </button>
           </>
         )}

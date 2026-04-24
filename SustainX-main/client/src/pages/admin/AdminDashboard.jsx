@@ -377,6 +377,18 @@ export default function AdminDashboard() {
                           <td>{fmtDate(c.createdAt)}</td>
                           <td>
                             <StatusBadge status={c.status} />
+                            {c.status === 'completed' && c.completionImage && (
+                              <div style={{ marginTop: '.4rem' }}>
+                                <a 
+                                  href={`http://localhost:5000${c.completionImage}`} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  style={{ fontSize: '.7rem', color: 'var(--clr-green)', fontWeight: 700, textDecoration: 'underline', display: 'flex', alignItems: 'center', gap: '.2rem' }}
+                                >
+                                  📸 View Proof
+                                </a>
+                              </div>
+                            )}
                             {c.status === 'rejected' && c.rejectionReason && (
                               <div style={{ fontSize: '.7rem', color: 'var(--clr-red)', marginTop: '.3rem', maxWidth: '150px', lineHeight: 1.2 }}>
                                 <strong>Reason:</strong> {c.rejectionReason}
