@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Reward = require('../models/Reward');
 
 // Generate JWT with id, role, and block embedded
 const generateToken = (user) => {
@@ -80,7 +81,18 @@ const register = async (req, res) => {
       email: email.toLowerCase(),
       dept: dept || '',
       block: studentBlock,
+      rewardPoints: 100,
     });
+
+    // Create signup bonus reward entry
+    await Reward.create({
+      user: user._id,
+      activity: 'Signup Bonus',
+      points: 100,
+      date: new Date(),
+    });
+
+    console.log(`🎁 [SIGNUP] New student ${user.email} received 100 pts signup bonus`);
 
     res.status(201).json({
       token: generateToken(user),

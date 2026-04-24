@@ -94,6 +94,8 @@ export default function StudentDashboard() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productRating, setProductRating] = useState(0);
   const [cart, setCart] = useState([]);
+  const [cartModalOpen, setCartModalOpen] = useState(false);
+  const [orderRatings, setOrderRatings] = useState({});
 
 
   const loadProfile = useCallback(async () => {
@@ -633,9 +635,22 @@ export default function StudentDashboard() {
                 <div className="section-title-bar"></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                   <h2>🛒 Eco Store</h2>
-                  <div className="badge badge-progress" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
-                    🛒 Cart: {cart.length} items
-                  </div>
+                  <button
+                    className="btn btn-sm btn-blue"
+                    style={{ position: 'relative', fontSize: '.85rem', padding: '.5rem 1rem' }}
+                    onClick={() => setCartModalOpen(true)}
+                  >
+                    🛒 Cart
+                    {cart.length > 0 && (
+                      <span style={{
+                        position: 'absolute', top: '-6px', right: '-6px',
+                        background: 'var(--clr-red, #eb4c4c)', color: '#fff',
+                        borderRadius: '50%', width: '20px', height: '20px',
+                        display: 'grid', placeItems: 'center',
+                        fontSize: '.7rem', fontWeight: 800,
+                      }}>{cart.length}</span>
+                    )}
+                  </button>
                 </div>
               </div>
               <p style={{ marginBottom: '1.2rem', color: 'var(--txt-muted)', fontSize: '.9rem' }}>
@@ -675,7 +690,7 @@ export default function StudentDashboard() {
                         onClick={(e) => { e.stopPropagation(); handleRedeem(item._id); }}
                         style={{ marginTop: '.6rem' }}
                       >
-                        {isRedeeming ? '⌛ Redeeming…' : rewardTotal >= item.pointsRequired ? '🛒 Redeem' : `🔒 Need ${item.pointsRequired - rewardTotal} more pts`}
+                        {isRedeeming ? '⌛ Redeeming…' : rewardTotal >= item.pointsRequired ? '🛒 Redeem Now' : `🔒 Need ${item.pointsRequired - rewardTotal} more pts`}
                       </button>
                       <button 
                         className="btn btn-sm btn-blue btn-full"
@@ -836,7 +851,32 @@ export default function StudentDashboard() {
                       })}
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.8rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.8rem', alignItems: 'center' }}>
+                      {o.status === 'delivered' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '.3rem', marginRight: 'auto' }}>
+                          <span style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--txt-muted)' }}>Rate:</span>
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <span
+                              key={star}
+                              onClick={() => setOrderRatings(prev => ({ ...prev, [o._id]: star }))}
+                              style={{
+                                color: star <= (orderRatings[o._id] || 0) ? '#FFD700' : 'var(--border)',
+                                cursor: 'pointer',
+                                fontSize: '1.3rem',
+                                transition: 'transform 0.15s ease',
+                                transform: star <= (orderRatings[o._id] || 0) ? 'scale(1.15)' : 'scale(1)',
+                              }}
+                            >
+                              ★
+                            </span>
+                          ))}
+                          {orderRatings[o._id] > 0 && (
+                            <span style={{ fontSize: '.7rem', fontWeight: 700, color: 'var(--clr-amber)', marginLeft: '.3rem' }}>
+                              {orderRatings[o._id]}/5
+                            </span>
+                          )}
+                        </div>
+                      )}
                       <button className="btn btn-sm btn-ghost" onClick={() => { setReceiptOrder(o); setReceiptModalOpen(true); }}>🧾 Full Receipt</button>
                     </div>
                   </div>
@@ -981,6 +1021,128 @@ export default function StudentDashboard() {
           )}
         </Modal>
 
+        {/* ── CART MODAL ── */}
+        <Modal id="cart-modal" isOpen={cartModalOpen} onClose={() => setCartModalOpen(false)} title="🛒 Your Cart">
+          {(() => {
+            // Aggregate cart items by _id
+            const cartMap = {};
+            cart.forEach(item => {
+              if (cartMap[item._id]) {
+                cartMap[item._id].qty += 1;
+              } else {
+                cartMap[item._id] = { ...item, qty: 1 };
+              }
+            });
+            const cartItems = Object.values(cartMap);
+            const cartTotal = cartItems.reduce((sum, ci) => sum + ci.pointsRequired * ci.qty, 0);
+            const canCheckout = cartTotal > 0 && rewardTotal >= cartTotal;
+
+            return (
+              <div style={{ padding: '0 .5rem' }}>
+                {cartItems.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '.7rem' }}>🛒</div>
+                    <h3>Your cart is empty</h3>
+                    <p className="text-muted" style={{ fontSize: '.85rem' }}>Browse the Eco Store to add items!</p>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '.8rem', marginBottom: '1.5rem' }}>
+                      {cartItems.map((ci) => (
+                        <div key={ci._id} style={{
+                          display: 'flex', alignItems: 'center', gap: '1rem',
+                          padding: '.8rem 1rem', background: 'var(--bg-sidebar)',
+                          borderRadius: '12px', border: '1px solid var(--border)',
+                        }}>
+                          <img
+                            src={ci.image}
+                            alt={ci.name}
+                            style={{ width: 50, height: 50, borderRadius: '8px', objectFit: 'contain', background: '#f8f8f8', padding: '4px' }}
+                            onError={(e) => { e.target.src = 'https://via.placeholder.com/50'; }}
+                          />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 700, fontSize: '.9rem' }}>{ci.name}</div>
+                            <div style={{ fontSize: '.75rem', color: 'var(--clr-green)', fontWeight: 600 }}>⭐ {ci.pointsRequired} pts each</div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem' }}>
+                            <button
+                              className="btn btn-sm btn-ghost"
+                              style={{ padding: '.15rem .45rem', fontSize: '.85rem', minWidth: 0 }}
+                              onClick={() => {
+                                setCart(prev => {
+                                  const idx = prev.findIndex(c => c._id === ci._id);
+                                  if (idx === -1) return prev;
+                                  return [...prev.slice(0, idx), ...prev.slice(idx + 1)];
+                                });
+                              }}
+                            >−</button>
+                            <span style={{ fontWeight: 800, fontSize: '.9rem', minWidth: '20px', textAlign: 'center' }}>{ci.qty}</span>
+                            <button
+                              className="btn btn-sm btn-ghost"
+                              style={{ padding: '.15rem .45rem', fontSize: '.85rem', minWidth: 0 }}
+                              onClick={() => setCart(prev => [...prev, ci])}
+                            >+</button>
+                          </div>
+                          <div style={{ fontWeight: 800, fontSize: '.9rem', color: 'var(--clr-navy)', minWidth: '55px', textAlign: 'right' }}>
+                            {ci.pointsRequired * ci.qty} pts
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Cart Summary */}
+                    <div style={{
+                      padding: '1rem 1.2rem', borderRadius: '12px',
+                      background: 'linear-gradient(135deg, rgba(145,208,108,.1), rgba(76,140,228,.08))',
+                      border: '1px solid var(--border)', marginBottom: '1rem',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '.6rem' }}>
+                        <span style={{ color: 'var(--txt-muted)', fontWeight: 600 }}>Your Balance</span>
+                        <span style={{ fontWeight: 700 }}>🏆 {rewardTotal} pts</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '.6rem' }}>
+                        <span style={{ color: 'var(--txt-muted)', fontWeight: 600 }}>Cart Total</span>
+                        <span style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--clr-navy)' }}>⭐ {cartTotal} pts</span>
+                      </div>
+                      <div style={{ borderTop: '1px solid var(--border)', paddingTop: '.6rem', display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontWeight: 700 }}>After Checkout</span>
+                        <span style={{ fontWeight: 800, color: canCheckout ? 'var(--clr-green)' : 'var(--clr-red)' }}>
+                          {canCheckout ? `${rewardTotal - cartTotal} pts remaining` : `⚠️ Need ${cartTotal - rewardTotal} more pts`}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '.8rem' }}>
+                      <button
+                        className="btn btn-red btn-full"
+                        style={{ fontSize: '.85rem' }}
+                        onClick={() => { setCart([]); showToast('Cart cleared', 'info'); }}
+                      >🗑 Clear Cart</button>
+                      <button
+                        className={`btn btn-full ${canCheckout ? 'btn-primary' : 'btn-ghost'}`}
+                        disabled={!canCheckout}
+                        style={{ fontSize: '.85rem' }}
+                        onClick={async () => {
+                          for (const ci of cartItems) {
+                            for (let i = 0; i < ci.qty; i++) {
+                              await handleRedeem(ci._id);
+                            }
+                          }
+                          setCart([]);
+                          setCartModalOpen(false);
+                          showToast('All cart items redeemed! Check My Orders 🎉', 'success');
+                        }}
+                      >
+                        {canCheckout ? '✅ Checkout All' : '🔒 Insufficient Points'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })()}
+        </Modal>
+
         {/* ── PRODUCT DETAILS MODAL ── */}
         <Modal id="product-modal" isOpen={!!selectedProduct} onClose={() => setSelectedProduct(null)} title="🏷️ Product Details">
           {selectedProduct && (
@@ -1009,33 +1171,16 @@ export default function StudentDashboard() {
                 <p style={{ color: 'var(--txt-secondary)', lineHeight: 1.6 }}>{selectedProduct.description}</p>
               </div>
 
-              {/* Frontend-only Rating System */}
-              <div style={{ background: 'var(--bg-sidebar)', padding: '1.2rem', borderRadius: '12px', marginBottom: '1.5rem', textAlign: 'center', border: '1px solid var(--border)' }}>
-                <div className="form-label" style={{ marginBottom: '.8rem', fontSize: '.75rem' }}>Rate this Product</div>
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '.5rem', marginBottom: '.5rem' }}>
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <span
-                      key={star}
-                      onClick={() => setProductRating(star)}
-                      style={{
-                        color: star <= productRating ? "#FFD700" : "var(--border)",
-                        cursor: "pointer",
-                        fontSize: "2.2rem",
-                        transition: 'transform 0.2s ease',
-                        transform: star <= productRating ? 'scale(1.1)' : 'scale(1)'
-                      }}
-                    >
-                      ★
-                    </span>
-                  ))}
-                </div>
-                <p style={{ margin: 0, fontSize: '.85rem', fontWeight: 600, color: 'var(--txt-primary)' }}>
-                  {productRating > 0 ? `Your Rating: ${productRating}/5` : 'Click a star to rate'}
-                </p>
-                <div style={{ fontSize: '.65rem', color: 'var(--txt-muted)', marginTop: '.4rem' }}>(Rating is stored locally for this session)</div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '1rem' }}>
+              <div style={{ display: 'flex', gap: '.8rem' }}>
+                <button 
+                  className="btn btn-blue btn-full"
+                  onClick={() => {
+                    setCart(prev => [...prev, selectedProduct]);
+                    showToast(`${selectedProduct.name} added to cart! 🛒`, 'success');
+                  }}
+                >
+                  ➕ Add to Cart
+                </button>
                 <button 
                   className={`btn btn-primary btn-full ${rewardTotal >= selectedProduct.pointsRequired && selectedProduct.stock > 0 ? '' : 'btn-ghost'}`}
                   disabled={rewardTotal < selectedProduct.pointsRequired || selectedProduct.stock <= 0}
@@ -1043,8 +1188,8 @@ export default function StudentDashboard() {
                 >
                   {selectedProduct.stock <= 0 ? 'Out of Stock' : '🛒 Redeem Now'}
                 </button>
-                <button className="btn btn-ghost btn-full" onClick={() => setSelectedProduct(null)}>Close</button>
               </div>
+              <button className="btn btn-ghost btn-full" style={{ marginTop: '.5rem' }} onClick={() => setSelectedProduct(null)}>Close</button>
             </div>
           )}
         </Modal>
