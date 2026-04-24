@@ -13,7 +13,7 @@ const storeItemSchema = new mongoose.Schema(
     },
     image: {
       type: String,
-      default: null,
+      required: true,
     },
     pointsRequired: {
       type: Number,

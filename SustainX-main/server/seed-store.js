@@ -17,7 +17,7 @@ const PRODUCTS = [
     pointsRequired: 30,
     stock: 50,
     category: 'home',
-    image: 'https://images.unsplash.com/photo-1607613009820-a29f7bb81c04?auto=format&fit=crop&q=80&w=800',
+    image: 'https://images.unsplash.com/photo-1588776814546-1ffcf47267a5',
   },
   {
     name: 'Steel Water Bottle',
@@ -25,7 +25,7 @@ const PRODUCTS = [
     pointsRequired: 120,
     stock: 25,
     category: 'accessories',
-    image: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&q=80&w=800',
+    image: 'https://images.unsplash.com/photo-1600180758890-6b94519a8ba6',
   },
   {
     name: 'Cloth Shopping Bag',
@@ -33,7 +33,7 @@ const PRODUCTS = [
     pointsRequired: 40,
     stock: 100,
     category: 'accessories',
-    image: 'https://images.unsplash.com/photo-1544816153-199d88767942?auto=format&fit=crop&q=80&w=800',
+    image: 'https://images.unsplash.com/photo-1593032465171-8c02f3b74f4b',
   },
   {
     name: 'Recycled Notebook',
@@ -41,7 +41,7 @@ const PRODUCTS = [
     pointsRequired: 60,
     stock: 40,
     category: 'stationery',
-    image: 'https://images.unsplash.com/photo-1531346878377-a5be2016584c?auto=format&fit=crop&q=80&w=800',
+    image: 'https://images.unsplash.com/photo-1519681393784-d120267933ba',
   },
   {
     name: 'Desk Organizer',
@@ -49,7 +49,7 @@ const PRODUCTS = [
     pointsRequired: 150,
     stock: 15,
     category: 'stationery',
-    image: 'https://images.unsplash.com/photo-1587614382346-ac5c9c6e3a2f?auto=format&fit=crop&q=80&w=800',
+    image: 'https://images.unsplash.com/photo-1582582494700-7e6d3a6b7a6e',
   },
   {
     name: 'Stainless Steel Lunch Box',
@@ -57,7 +57,7 @@ const PRODUCTS = [
     pointsRequired: 180,
     stock: 20,
     category: 'home',
-    image: 'https://images.unsplash.com/photo-1621466561453-7313670989ea?auto=format&fit=crop&q=80&w=800',
+    image: 'https://images.unsplash.com/photo-1604908177522-402d3e9d1a59',
   },
   {
     name: 'Reusable Coffee Cup',
@@ -65,7 +65,7 @@ const PRODUCTS = [
     pointsRequired: 100,
     stock: 30,
     category: 'home',
-    image: 'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&q=80&w=800',
+    image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93',
   },
   {
     name: 'Eco Backpack',
@@ -73,7 +73,7 @@ const PRODUCTS = [
     pointsRequired: 500,
     stock: 10,
     category: 'accessories',
-    image: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&q=80&w=800',
+    image: 'https://images.unsplash.com/photo-1514474959185-1472d4c4e0b8',
   },
   {
     name: 'Waste Segregation Bin',
@@ -81,7 +81,7 @@ const PRODUCTS = [
     pointsRequired: 250,
     stock: 12,
     category: 'home',
-    image: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&q=80&w=800',
+    image: 'https://images.unsplash.com/photo-1604187351574-c75ca79f5807',
   },
   {
     name: 'Solar Power Bank',
@@ -89,7 +89,7 @@ const PRODUCTS = [
     pointsRequired: 400,
     stock: 8,
     category: 'other',
-    image: 'https://images.unsplash.com/photo-1617788131756-0b39129bd23d?auto=format&fit=crop&q=80&w=800',
+    image: 'https://images.unsplash.com/photo-1584270354949-1f62b3d1a4cb',
   },
 ];
 

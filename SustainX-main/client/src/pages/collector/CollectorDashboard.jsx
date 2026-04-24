@@ -573,7 +573,11 @@ export default function CollectorDashboard() {
                 ) : storeItems.map((item) => (
                   <div className="store-card" key={item._id}>
                     <div className="card-image">
-                      <img src={item.image} alt={item.name} />
+                      <img 
+                        src={item.image} 
+                        alt={item.name} 
+                        onError={(e) => { e.target.src = "https://via.placeholder.com/200"; }}
+                      />
                       <span className="store-eco-badge">♻️ Eco-friendly</span>
                     </div>
                     <div className="store-card-body">
