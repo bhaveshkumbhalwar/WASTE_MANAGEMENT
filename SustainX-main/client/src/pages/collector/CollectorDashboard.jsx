@@ -576,6 +576,7 @@ export default function CollectorDashboard() {
                       <img 
                         src={item.image} 
                         alt={item.name} 
+                        loading="lazy"
                         onError={(e) => { e.target.src = "https://via.placeholder.com/200"; }}
                       />
                       <span className="store-eco-badge">♻️ Eco-friendly</span>

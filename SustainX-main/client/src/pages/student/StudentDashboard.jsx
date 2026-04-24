@@ -91,6 +91,9 @@ export default function StudentDashboard() {
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedDetail, setSelectedDetail] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [productRating, setProductRating] = useState(0);
+  const [cart, setCart] = useState([]);
 
 
   const loadProfile = useCallback(async () => {
@@ -626,7 +629,15 @@ export default function StudentDashboard() {
           {/* ── STORE ── */}
           {section === 'sec-store' && (
             <section className="page-section active" id="sec-store">
-              <div className="section-title"><div className="section-title-bar"></div><h2>🛒 Eco Store</h2></div>
+              <div className="section-title">
+                <div className="section-title-bar"></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                  <h2>🛒 Eco Store</h2>
+                  <div className="badge badge-progress" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
+                    🛒 Cart: {cart.length} items
+                  </div>
+                </div>
+              </div>
               <p style={{ marginBottom: '1.2rem', color: 'var(--txt-muted)', fontSize: '.9rem' }}>
                 Redeem your reward points for items made from recycled waste! You have <strong style={{ color: 'var(--clr-green)' }}>{rewardTotal} pts</strong>.
               </p>
@@ -638,11 +649,12 @@ export default function StudentDashboard() {
                     <p className="text-muted">No items available yet. Check back soon!</p>
                   </div>
                 ) : storeItems.map((item) => (
-                  <div className="store-card" key={item._id}>
+                  <div className="store-card" key={item._id} onClick={() => { setSelectedProduct(item); setProductRating(0); }} style={{ cursor: 'pointer' }}>
                     <div className="card-image">
                       <img 
                         src={item.image} 
                         alt={item.name} 
+                        loading="lazy"
                         onError={(e) => { e.target.src = "https://via.placeholder.com/200"; }}
                       />
                       <span className="store-eco-badge">♻️ Eco-friendly</span>
@@ -660,10 +672,28 @@ export default function StudentDashboard() {
                       <button
                         className={`btn btn-sm btn-full ${rewardTotal >= item.pointsRequired && item.stock > 0 ? 'btn-primary' : 'btn-ghost'}`}
                         disabled={rewardTotal < item.pointsRequired || item.stock <= 0 || isRedeeming}
-                        onClick={() => handleRedeem(item._id)}
+                        onClick={(e) => { e.stopPropagation(); handleRedeem(item._id); }}
                         style={{ marginTop: '.6rem' }}
                       >
                         {isRedeeming ? '⌛ Redeeming…' : rewardTotal >= item.pointsRequired ? '🛒 Redeem' : `🔒 Need ${item.pointsRequired - rewardTotal} more pts`}
+                      </button>
+                      <button 
+                        className="btn btn-sm btn-blue btn-full"
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          setCart(prev => [...prev, item]);
+                          showToast(`${item.name} added to cart! 🛒`, 'success');
+                        }}
+                        style={{ marginTop: '.4rem', fontSize: '.75rem' }}
+                      >
+                        ➕ Add to Cart
+                      </button>
+                      <button 
+                        className="btn btn-sm btn-ghost btn-full" 
+                        onClick={(e) => { e.stopPropagation(); setSelectedProduct(item); setProductRating(0); }}
+                        style={{ marginTop: '.4rem', fontSize: '.75rem' }}
+                      >
+                        👁️ See Details
                       </button>
                     </div>
                   </div>
@@ -950,6 +980,75 @@ export default function StudentDashboard() {
             </div>
           )}
         </Modal>
+
+        {/* ── PRODUCT DETAILS MODAL ── */}
+        <Modal id="product-modal" isOpen={!!selectedProduct} onClose={() => setSelectedProduct(null)} title="🏷️ Product Details">
+          {selectedProduct && (
+            <div className="product-detail-container" style={{ padding: '0 0.5rem' }}>
+              <div className="card-image" style={{ height: '240px', marginBottom: '1.5rem', background: '#f8f8f8', borderRadius: '16px' }}>
+                <img 
+                  src={selectedProduct.image} 
+                  alt={selectedProduct.name} 
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '15px' }}
+                  loading="lazy"
+                  onError={(e) => { e.target.src = "https://via.placeholder.com/400"; }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '.5rem' }}>
+                  <h2 style={{ margin: 0, fontSize: '1.5rem' }}>{selectedProduct.name}</h2>
+                  <span className="store-category-tag">{selectedProduct.category}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--clr-green)' }}>⭐ {selectedProduct.pointsRequired} pts</div>
+                  <div style={{ fontSize: '.85rem', color: selectedProduct.stock > 0 ? 'var(--clr-blue)' : 'var(--clr-red)', fontWeight: 600 }}>
+                    {selectedProduct.stock > 0 ? `📦 ${selectedProduct.stock} in stock` : '❌ Out of stock'}
+                  </div>
+                </div>
+                <p style={{ color: 'var(--txt-secondary)', lineHeight: 1.6 }}>{selectedProduct.description}</p>
+              </div>
+
+              {/* Frontend-only Rating System */}
+              <div style={{ background: 'var(--bg-sidebar)', padding: '1.2rem', borderRadius: '12px', marginBottom: '1.5rem', textAlign: 'center', border: '1px solid var(--border)' }}>
+                <div className="form-label" style={{ marginBottom: '.8rem', fontSize: '.75rem' }}>Rate this Product</div>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '.5rem', marginBottom: '.5rem' }}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <span
+                      key={star}
+                      onClick={() => setProductRating(star)}
+                      style={{
+                        color: star <= productRating ? "#FFD700" : "var(--border)",
+                        cursor: "pointer",
+                        fontSize: "2.2rem",
+                        transition: 'transform 0.2s ease',
+                        transform: star <= productRating ? 'scale(1.1)' : 'scale(1)'
+                      }}
+                    >
+                      ★
+                    </span>
+                  ))}
+                </div>
+                <p style={{ margin: 0, fontSize: '.85rem', fontWeight: 600, color: 'var(--txt-primary)' }}>
+                  {productRating > 0 ? `Your Rating: ${productRating}/5` : 'Click a star to rate'}
+                </p>
+                <div style={{ fontSize: '.65rem', color: 'var(--txt-muted)', marginTop: '.4rem' }}>(Rating is stored locally for this session)</div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button 
+                  className={`btn btn-primary btn-full ${rewardTotal >= selectedProduct.pointsRequired && selectedProduct.stock > 0 ? '' : 'btn-ghost'}`}
+                  disabled={rewardTotal < selectedProduct.pointsRequired || selectedProduct.stock <= 0}
+                  onClick={() => { handleRedeem(selectedProduct._id); setSelectedProduct(null); }}
+                >
+                  {selectedProduct.stock <= 0 ? 'Out of Stock' : '🛒 Redeem Now'}
+                </button>
+                <button className="btn btn-ghost btn-full" onClick={() => setSelectedProduct(null)}>Close</button>
+              </div>
+            </div>
+          )}
+        </Modal>
+
 
 
       </main>
