@@ -49,8 +49,10 @@ const getComplaints = async (req, res) => {
     if (req.query.status) {
       query.status = req.query.status;
     }
-    if (req.query.studentId && req.user.role === 'admin') {
-      query.user = req.query.studentId; // Frontend might still send 'studentId' as the query param key, but we map to 'user'
+    if (req.query.user && req.user.role === 'admin') {
+      query.user = req.query.user;
+    } else if (req.query.studentId && req.user.role === 'admin') {
+      query.user = req.query.studentId; // Legacy fallback
     }
     if (req.query.block && req.user.role === 'admin') {
       query.block = req.query.block.toUpperCase();

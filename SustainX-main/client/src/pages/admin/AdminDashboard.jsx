@@ -64,7 +64,6 @@ export default function AdminDashboard() {
   const [viewUserComplaints, setViewUserComplaints] = useState([]);
 
   // Create Student form
-  const [csId, setCsId] = useState('');
   const [csName, setCsName] = useState('');
   const [csEmail, setCsEmail] = useState('');
   const [csDept, setCsDept] = useState('');
@@ -133,11 +132,12 @@ export default function AdminDashboard() {
   const loadAllRewards = useCallback(async () => {
     try {
       const res = await getRewards();
-      const userRes = await getUsers();
-      const stuMap = {};
-      userRes.data.forEach((u) => (stuMap[u.userId] = u.name));
       setAllRewards(
-        res.data.map((r) => ({ ...r, userName: stuMap[r.userId] || r.userId }))
+        res.data.map((r) => ({
+          ...r,
+          userName: r.user?.name || 'Unknown',
+          userEmail: r.user?.email || 'N/A',
+        }))
       );
     } catch { /* ignore */ }
   }, []);
@@ -173,12 +173,12 @@ export default function AdminDashboard() {
   // Create Student
   const handleCreateStudent = async (e) => {
     e.preventDefault();
-    if (!csId || !csName || !csEmail || !csPass) { showToast('Please fill all required fields.', 'warning'); return; }
+    if (!csName || !csEmail || !csPass) { showToast('Please fill all required fields.', 'warning'); return; }
     try {
-      await createUser({ userId: csId.toUpperCase(), role: 'student', name: csName, email: csEmail, dept: csDept, password: csPass });
+      await createUser({ role: 'student', name: csName, email: csEmail, dept: csDept, password: csPass, block: 'A' });
       showToast(`Student ${csName} created successfully! ✅`);
       setCreateStudentModalOpen(false);
-      setCsId(''); setCsName(''); setCsEmail(''); setCsDept(''); setCsPass('');
+      setCsName(''); setCsEmail(''); setCsDept(''); setCsPass('');
       loadStudentUsers(); loadStats(); loadStudents();
     } catch (err) {
       showToast(err.response?.data?.message || 'Error', 'error');
@@ -201,13 +201,8 @@ export default function AdminDashboard() {
       return;
     }
 
-    // Auto-generate collector userId from name
-    const rawId = ccName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8);
-    const userId = 'COL' + rawId + Date.now().toString().slice(-3);
-
     try {
       await createUser({
-        userId,
         role: 'collector',
         name: ccName,
         email: ccEmail,
@@ -223,10 +218,10 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteUser = async (userId, name) => {
-    if (!window.confirm(`Are you sure you want to delete user "${name}" (${userId})? This cannot be undone.`)) return;
+  const handleDeleteUser = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to delete user "${name}"? This cannot be undone.`)) return;
     try {
-      await deleteUserApi(userId);
+      await deleteUserApi(id);
       showToast(`User ${name} deleted.`, 'warning');
       loadStudentUsers(); loadCollectors(); loadStats();
     } catch (err) {
@@ -234,11 +229,11 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleViewUser = async (userId) => {
+  const handleViewUser = async (id) => {
     try {
-      const res = await getUserById(userId);
+      const res = await getUserById(id);
       setViewUserData(res.data);
-      const compRes = await getComplaints({ studentId: userId });
+      const compRes = await getComplaints({ user: id });
       setViewUserComplaints(compRes.data);
       setViewModalOpen(true);
     } catch { /* ignore */ }
@@ -252,9 +247,9 @@ export default function AdminDashboard() {
     if (!activity) { showToast('Please specify an activity.', 'warning'); return; }
     if (!pts || pts < 1) { showToast('Please enter valid points (≥ 1).', 'warning'); return; }
     try {
-      await addReward({ studentId: rewStudentId, activity, points: pts });
-      const stu = students.find((s) => s.userId === rewStudentId);
-      showToast(`Awarded ${pts} pts to ${stu?.name || rewStudentId} for "${activity}" ✅`, 'success');
+      await addReward({ user: rewStudentId, activity, points: pts });
+      const stu = students.find((s) => s._id === rewStudentId);
+      showToast(`Awarded ${pts} pts to ${stu?.name || 'student'} for "${activity}" ✅`, 'success');
       setRewStudentId(''); setRewActivity('Waste Photo Complaint'); setRewCustom(''); setRewPoints('');
       loadAllRewards(); loadStudents(); loadStats();
     } catch (err) {
@@ -370,17 +365,17 @@ export default function AdminDashboard() {
                       ) : allComplaints.map((c) => (
                         <tr key={c.complaintId}>
                           <td><strong style={{ color: 'var(--clr-blue)' }}>{c.complaintId}</strong></td>
-                          <td>{c.studentId}</td>
+                          <td>{c.user?.name || '—'}</td>
                           <td>{c.location}</td>
                           <td><span className="badge badge-progress">🏢 {c.block || '—'}</span></td>
-                          <td>{c.assignedTo || <span style={{ color: 'var(--txt-muted)', fontSize: '.8rem' }}>Unassigned</span>}</td>
+                          <td>{c.assignedTo?.name || <span style={{ color: 'var(--txt-muted)', fontSize: '.8rem' }}>Unassigned</span>}</td>
                           <td>{fmtDate(c.createdAt)}</td>
                           <td>
                             <StatusBadge status={c.status} />
                             {c.status === 'completed' && c.completionImage && (
                               <div style={{ marginTop: '.4rem' }}>
                                 <a 
-                                  href={`http://localhost:5000${c.completionImage}`} 
+                                  href={c.completionImage} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
                                   style={{ fontSize: '.7rem', color: 'var(--clr-green)', fontWeight: 700, textDecoration: 'underline', display: 'flex', alignItems: 'center', gap: '.2rem' }}
@@ -426,7 +421,7 @@ export default function AdminDashboard() {
                     ) : allOrders.map((o) => (
                       <tr key={o.orderId}>
                         <td><strong style={{ color: 'var(--clr-blue)' }}>{o.orderId}</strong><div className="text-muted" style={{ fontSize: '.7rem' }}>{fmtDate(o.createdAt)}</div></td>
-                        <td>{o.userName}<div className="text-muted" style={{ fontSize: '.7rem' }}>{o.userId}</div></td>
+                        <td>{o.userName}<div className="text-muted" style={{ fontSize: '.7rem' }}>{o.user?.email || '—'}</div></td>
                         <td>{o.itemName}<div className="text-muted" style={{ fontSize: '.7rem' }}>⭐ {o.pointsUsed} pts</div></td>
                         <td style={{ minWidth: 200 }}>
                           <div className="status-progress-container" style={{ margin: 0, paddingTop: '.5rem', transform: 'scale(0.85)', transformOrigin: 'left' }}>
@@ -478,21 +473,21 @@ export default function AdminDashboard() {
 
               <div className="table-wrap">
                 <table>
-                  <thead><tr><th>User ID</th><th>Name</th><th>Email</th><th>Block</th><th>Created</th><th>Actions</th></tr></thead>
+                  <thead><tr><th>Email</th><th>Name</th><th>Email</th><th>Block</th><th>Created</th><th>Actions</th></tr></thead>
                   <tbody>
                     {collectors.length === 0 ? (
                       <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--txt-muted)' }}>No collectors found. Add one using the button above.</td></tr>
                     ) : collectors.map((c) => (
-                      <tr key={c.userId}>
-                        <td><strong>{c.userId}</strong></td>
+                      <tr key={c._id}>
+                        <td><strong style={{ fontSize: '.75rem' }}>{c.email}</strong></td>
                         <td>{c.name}</td>
                         <td style={{ fontSize: '.82rem' }}>{c.email}</td>
                         <td><span className="badge badge-progress" style={{ fontWeight: 700 }}>🏢 Block {c.block || '—'}</span></td>
                         <td style={{ fontSize: '.82rem' }}>{fmtDate(c.createdAt)}</td>
                         <td>
                           <div style={{ display: 'flex', gap: '.4rem' }}>
-                            <button className="btn btn-ghost btn-sm" onClick={() => handleViewUser(c.userId)}>👁 View</button>
-                            <button className="btn btn-red btn-sm" onClick={() => handleDeleteUser(c.userId, c.name)}>🗑 Delete</button>
+                            <button className="btn btn-ghost btn-sm" onClick={() => handleViewUser(c._id)}>👁 View</button>
+                            <button className="btn btn-red btn-sm" onClick={() => handleDeleteUser(c._id, c.name)}>🗑 Delete</button>
                           </div>
                         </td>
                       </tr>
@@ -512,21 +507,21 @@ export default function AdminDashboard() {
               </div>
               <div className="table-wrap">
                 <table>
-                  <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Department</th><th>Reward Pts</th><th>Actions</th></tr></thead>
+                  <thead><tr><th>Email</th><th>Name</th><th>Email</th><th>Department</th><th>Reward Pts</th><th>Actions</th></tr></thead>
                   <tbody>
                     {studentUsers.length === 0 ? (
                       <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--txt-muted)' }}>No students found.</td></tr>
                     ) : studentUsers.map((u) => (
-                      <tr key={u.userId}>
-                        <td><strong>{u.userId}</strong></td>
+                      <tr key={u._id}>
+                        <td><strong style={{ fontSize: '.75rem' }}>{u.email}</strong></td>
                         <td>{u.name}</td>
                         <td style={{ fontSize: '.82rem' }}>{u.email}</td>
                         <td style={{ fontSize: '.82rem' }}>{u.dept || '—'}</td>
                         <td><span className="reward-pts">🏆 {u.rewardPoints || 0}</span></td>
                         <td>
                           <div style={{ display: 'flex', gap: '.4rem' }}>
-                            <button className="btn btn-ghost btn-sm" onClick={() => handleViewUser(u.userId)}>👁 View</button>
-                            <button className="btn btn-red btn-sm" onClick={() => handleDeleteUser(u.userId, u.name)}>🗑 Delete</button>
+                            <button className="btn btn-ghost btn-sm" onClick={() => handleViewUser(u._id)}>👁 View</button>
+                            <button className="btn btn-red btn-sm" onClick={() => handleDeleteUser(u._id, u.name)}>🗑 Delete</button>
                           </div>
                         </td>
                       </tr>
@@ -548,7 +543,7 @@ export default function AdminDashboard() {
                     <select className="form-select" value={rewStudentId} onChange={(e) => setRewStudentId(e.target.value)}>
                       <option value="">Choose a student…</option>
                       {students.map((s) => (
-                        <option key={s.userId} value={s.userId}>{s.name} ({s.userId}) — {s.rewardPoints || 0} pts</option>
+                        <option key={s._id} value={s._id}>{s.name} ({s.email}) — {s.rewardPoints || 0} pts</option>
                       ))}
                     </select>
                   </div>
@@ -585,7 +580,7 @@ export default function AdminDashboard() {
                         <tr><td colSpan="5" style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--txt-muted)' }}>No rewards distributed yet.</td></tr>
                       ) : allRewards.map((r, i) => (
                         <tr key={i}>
-                          <td><strong>{r.studentId}</strong></td>
+                          <td><strong>{r.userEmail}</strong></td>
                           <td>{r.userName}</td>
                           <td>{r.activity}</td>
                           <td><span className="reward-pts">+{r.points}</span></td>
@@ -693,7 +688,6 @@ export default function AdminDashboard() {
       {/* ══ Create Student Modal ══ */}
       <Modal isOpen={createStudentModalOpen} onClose={() => setCreateStudentModalOpen(false)} title="Create New Student">
         <form onSubmit={handleCreateStudent} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '.85rem' }}>
-          <div className="form-group"><label className="form-label">User ID</label><input className="form-input" placeholder="e.g. STU2026001" value={csId} onChange={(e) => setCsId(e.target.value)} /></div>
           <div className="form-group"><label className="form-label">Full Name</label><input className="form-input" placeholder="Full name" value={csName} onChange={(e) => setCsName(e.target.value)} /></div>
           <div className="form-group"><label className="form-label">Email</label><input className="form-input" type="email" placeholder="email@campus.edu" value={csEmail} onChange={(e) => setCsEmail(e.target.value)} /></div>
           <div className="form-group"><label className="form-label">Department</label><input className="form-input" placeholder="e.g. Computer Science" value={csDept} onChange={(e) => setCsDept(e.target.value)} /></div>
@@ -717,7 +711,7 @@ export default function AdminDashboard() {
                 <h3>{viewUserData.name}</h3>
                 <p style={{ fontSize: '.85rem' }}>{viewUserData.email}</p>
                 <div className="profile-meta" style={{ marginTop: '.4rem' }}>
-                  <span className="profile-meta-tag">{viewUserData.userId}</span>
+                  <span className="profile-meta-tag">{viewUserData.email}</span>
                   <span className="profile-meta-tag">
                     {viewUserData.role === 'collector' ? `🚛 Collector` : `🎓 Student`}
                   </span>

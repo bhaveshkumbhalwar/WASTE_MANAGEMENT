@@ -516,7 +516,7 @@ export default function CollectorDashboard() {
                         </td>
                         <td>
                           <div style={{ fontSize: '.85rem' }}>{o.userName}</div>
-                          <div className="text-muted" style={{ fontSize: '.72rem' }}>{o.userId}</div>
+                          <div className="text-muted" style={{ fontSize: '.72rem' }}>{o.user?.email || '—'}</div>
                         </td>
                         <td><span style={{ fontWeight: 600, color: 'var(--clr-amber)' }}>⭐ {o.pointsUsed}</span></td>
                         <td>
@@ -927,7 +927,7 @@ export default function CollectorDashboard() {
               </div>
               <div>
                 <div className="info-label">🆔 User ID</div>
-                <div style={{ fontWeight: 700, color: 'var(--clr-navy)' }}>{selectedOrder.user?.userId || selectedOrder.userId}</div>
+                <div style={{ fontWeight: 700, color: 'var(--clr-navy)' }}>{selectedOrder.user?.email || selectedOrder.userName || '—'}</div>
               </div>
             </div>
 

@@ -25,7 +25,7 @@ const login = async (req, res) => {
       return res.status(400).json({ message: 'Please provide email and password' });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
 
     if (!user) {
       console.log(`❌ [LOGIN]: User not found: ${email}`);
