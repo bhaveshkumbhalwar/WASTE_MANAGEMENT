@@ -94,5 +94,6 @@ export const assignOrderApi = (id) =>
 // ================= NOTIFICATIONS =================
 export const getNotifications = () => API.get('/notifications');
 export const markNotificationRead = (id) => API.put(`/notifications/read/${id}`);
+export const markAllNotificationsRead = () => API.put('/notifications/read-all');
 
 export default API;

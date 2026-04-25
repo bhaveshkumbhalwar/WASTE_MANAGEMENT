@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { getNotifications, markNotificationRead } from '../../services/api';
+import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../../services/api';
 import NotificationItem from './NotificationItem';
 
 export default function NotificationBell() {
@@ -12,6 +12,7 @@ export default function NotificationBell() {
   const fetchNotifications = async () => {
     try {
       const res = await getNotifications();
+      console.log(`🔔 [UI] Received ${res.data.length} notifications`);
       setNotifications(res.data);
     } catch (err) {
       console.error('Error fetching notifications:', err);
@@ -35,9 +36,25 @@ export default function NotificationBell() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleToggle = () => {
-    setIsOpen(!isOpen);
-    if (!isOpen) fetchNotifications();
+  const handleToggle = async () => {
+    const nextOpenState = !isOpen;
+    setIsOpen(nextOpenState);
+    
+    if (nextOpenState) {
+      // Refresh list
+      await fetchNotifications();
+      
+      // If there are unread, mark all as read
+      if (unreadCount > 0) {
+        try {
+          await markAllNotificationsRead();
+          // Optimistically update local state
+          setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+        } catch (err) {
+          console.error('Error marking all as read:', err);
+        }
+      }
+    }
   };
 
   const handleMarkRead = async (notification) => {

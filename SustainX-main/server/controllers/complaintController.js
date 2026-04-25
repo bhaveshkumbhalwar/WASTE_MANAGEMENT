@@ -141,6 +141,11 @@ const updateComplaintStatus = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to update other blocks' });
     }
 
+    // If status is moving to in-progress, assign to the current collector
+    if (req.user.role === 'collector' && !complaint.assignedTo) {
+      complaint.assignedTo = req.user._id;
+    }
+
     complaint.status = status;
     complaint.statusHistory.push({
       status,
@@ -150,6 +155,15 @@ const updateComplaintStatus = async (req, res) => {
     });
 
     await complaint.save();
+
+    // ✅ Notify Student about assignment if just assigned
+    if (status === 'in-progress' || status === 'in_progress') {
+      await createNotification(
+        complaint.user,
+        `🚛 Collector ${req.user.name} has picked up your complaint ${complaint.complaintId}`,
+        'complaint'
+      );
+    }
 
     // ✅ Notify Student about status update
     await createNotification(

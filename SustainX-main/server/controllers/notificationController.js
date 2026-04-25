@@ -4,11 +4,17 @@ const Notification = require('../models/Notification');
 // @route   GET /api/notifications
 const getNotifications = async (req, res) => {
   try {
-    const notifications = await Notification.find({ user: req.user.id })
+    const userId = req.user._id || req.user.id;
+    console.log(`🔍 [NOTIFICATIONS] Fetching for user: ${userId}`);
+    
+    const notifications = await Notification.find({ user: userId })
       .sort({ createdAt: -1 })
       .limit(50);
+      
+    console.log(`✅ [NOTIFICATIONS] Found ${notifications.length} notifications`);
     res.json(notifications);
   } catch (err) {
+    console.error(`❌ [NOTIFICATIONS ERROR]: ${err.message}`);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
@@ -37,15 +43,34 @@ const markAsRead = async (req, res) => {
   }
 };
 
+// @desc    Mark all user notifications as read
+// @route   PUT /api/notifications/read-all
+const markAllAsRead = async (req, res) => {
+  try {
+    await Notification.updateMany(
+      { user: req.user.id, isRead: false },
+      { $set: { isRead: true } }
+    );
+    res.json({ message: 'All notifications marked as read' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
 // Internal utility to create notifications
 const createNotification = async (userId, message, type) => {
   try {
+    if (!userId) {
+      console.error('⚠️ [NOTIFICATION] Cannot create notification: No userId provided');
+      return;
+    }
+    
     await Notification.create({
       user: userId,
       message,
       type
     });
-    console.log(`🔔 [NOTIFICATION] Created for user ${userId}: ${message}`);
+    console.log(`🔔 [NOTIFICATION] Created for user ${userId}: "${message}" (${type})`);
   } catch (err) {
     console.error('❌ [NOTIFICATION ERROR]:', err.message);
   }
@@ -54,5 +79,6 @@ const createNotification = async (userId, message, type) => {
 module.exports = {
   getNotifications,
   markAsRead,
+  markAllAsRead,
   createNotification
 };

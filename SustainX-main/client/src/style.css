@@ -821,27 +821,52 @@ tbody td {
   }
 }
 
-.topbar h2 {
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  min-width: 0; /* Important for ellipsis */
+}
+
+.topbar-title {
   font-size: 1.15rem;
   font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .topbar-actions {
   display: flex;
   align-items: center;
   gap: .75rem;
+  flex-shrink: 0; /* Ensure actions don't shrink and hide icons */
+}
+
+.topbar-time {
+  font-size: .78rem;
+  color: var(--txt-muted);
 }
 
 @media (max-width: 500px) {
-  .topbar-actions span {
+  .topbar-time {
     display: none;
   }
-  .topbar h2 {
+  .topbar-brand {
+    gap: .5rem;
+  }
+  .topbar-title {
     font-size: 1rem;
-    max-width: 150px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    max-width: 140px;
+  }
+  .topbar-actions {
+    gap: .4rem;
+  }
+  /* Ensure bell is always visible */
+  .notification-bell-container {
+    display: block !important;
+    visibility: visible !important;
   }
 }
 
