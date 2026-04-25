@@ -51,22 +51,22 @@
   --shadow-green: 0 0 0 3px var(--clr-green-glow);
 
   /* Radius */
-  --r-sm: 8px;
-  --r-md: 14px;
-  --r-lg: 22px;
-  --r-xl: 32px;
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 24px;
+  --r-xl: 40px;
 
   /* Typography */
   --font-body: 'Inter', system-ui, sans-serif;
   --font-heading: 'Outfit', 'Inter', sans-serif;
 
   /* Transitions */
-  --t-fast: .15s ease;
-  --t-med: .28s cubic-bezier(.4, 0, .2, 1);
-  --t-slow: .45s cubic-bezier(.4, 0, .2, 1);
+  --t-fast: .2s ease;
+  --t-med: .35s cubic-bezier(.4, 0, .2, 1);
+  --t-slow: .5s cubic-bezier(.4, 0, .2, 1);
 
   /* Sidebar */
-  --sidebar-w: 240px;
+  --sidebar-w: 260px;
 }
 
 /* ── Responsive Grids ─────────────────────────────────────── */
@@ -206,36 +206,25 @@ a:hover {
 .btn {
   display: inline-flex;
   align-items: center;
-  gap: .5rem;
-  padding: .65rem 1.4rem;
-  border-radius: var(--r-sm);
+  justify-content: center;
+  gap: .6rem;
+  padding: .75rem 1.6rem;
+  border-radius: var(--r-md);
   font-family: var(--font-body);
-  font-size: .92rem;
+  font-size: .95rem;
   font-weight: 600;
   border: none;
   cursor: pointer;
-  transition: transform var(--t-fast), box-shadow var(--t-fast), background var(--t-fast);
+  transition: all var(--t-fast);
   position: relative;
   overflow: hidden;
   white-space: nowrap;
-}
-
-.btn::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at center, rgba(255, 255, 255, .25) 0%, transparent 70%);
-  opacity: 0;
-  transition: opacity var(--t-fast);
-}
-
-.btn:active::after {
-  opacity: 1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .btn:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
 }
 
 .btn:active {
@@ -243,39 +232,39 @@ a:hover {
 }
 
 .btn-primary {
-  background: var(--clr-green);
-  color: var(--txt-on-green);
+  background: linear-gradient(135deg, var(--clr-green), var(--clr-green-dark));
+  color: white;
 }
 
 .btn-primary:hover {
-  background: var(--clr-green-dark);
+  filter: brightness(1.1);
 }
 
 .btn-blue {
-  background: var(--clr-blue);
+  background: linear-gradient(135deg, var(--clr-blue), var(--clr-blue-dark));
   color: #fff;
 }
 
 .btn-blue:hover {
-  background: var(--clr-blue-dark);
+  filter: brightness(1.1);
 }
 
 .btn-red {
-  background: var(--clr-red);
+  background: linear-gradient(135deg, var(--clr-red), #c93a3a);
   color: #fff;
 }
 
 .btn-red:hover {
-  background: #c93a3a;
+  filter: brightness(1.1);
 }
 
 .btn-amber {
-  background: var(--clr-amber);
+  background: linear-gradient(135deg, var(--clr-amber), #e6b520);
   color: #3A2A00;
 }
 
 .btn-amber:hover {
-  background: #e6b520;
+  filter: brightness(1.1);
 }
 
 .btn-ghost {
@@ -309,18 +298,22 @@ a:hover {
 .card {
   background: var(--bg-card);
   border-radius: var(--r-md);
-  padding: 1.5rem;
+  padding: 1.8rem;
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
-  transition: box-shadow var(--t-med), transform var(--t-med), background var(--t-med);
+  transition: all var(--t-med);
+  position: relative;
+  overflow: hidden;
 }
 
 .card:hover {
   box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 
 .card-lift:hover {
-  transform: translateY(-4px);
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-lg);
 }
 
 /* ── Inputs ───────────────────────────────────────────────── */
@@ -544,17 +537,19 @@ tbody td {
 .stat-card {
   background: var(--bg-card);
   border-radius: var(--r-md);
-  padding: 1.25rem 1.5rem;
+  padding: 1.5rem;
   border: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  gap: .35rem;
-  transition: transform var(--t-med), box-shadow var(--t-med);
+  gap: .5rem;
+  transition: all var(--t-med);
+  position: relative;
 }
 
 .stat-card:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--clr-green);
 }
 
 .stat-value {
@@ -572,8 +567,24 @@ tbody td {
 }
 
 .stat-icon {
-  font-size: 1.7rem;
+  font-size: 1.8rem;
   margin-bottom: .2rem;
+}
+
+.stat-icon-wrapper {
+  background: var(--bg-sidebar-item);
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  margin-bottom: .5rem;
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
 }
 
 /* ── Sidebar Layout ───────────────────────────────────────── */
@@ -634,6 +645,31 @@ tbody td {
   padding: 0 1.4rem 1.5rem;
   border-bottom: 1px solid var(--sidebar-border-clr);
   transition: border-color var(--t-med);
+}
+
+.sidebar-close-btn {
+  display: none;
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  color: var(--sidebar-txt-muted);
+  cursor: pointer;
+  padding: .5rem;
+  margin-left: auto;
+  border-radius: 50%;
+  transition: all var(--t-fast);
+}
+
+.sidebar-close-btn:hover {
+  background: var(--bg-sidebar-item);
+  color: var(--clr-red);
+}
+
+@media (max-width: 1024px) {
+  .sidebar-close-btn {
+    display: grid;
+    place-items: center;
+  }
 }
 
 .sidebar-logo .logo-icon {
@@ -850,6 +886,10 @@ tbody td {
 }
 
 @media (max-width: 500px) {
+  .topbar {
+    padding: 0.75rem 1rem;
+    height: 64px;
+  }
   .topbar-time {
     display: none;
   }
@@ -857,16 +897,24 @@ tbody td {
     gap: .5rem;
   }
   .topbar-title {
-    font-size: 1rem;
-    max-width: 140px;
+    font-size: 1.1rem;
+    max-width: 160px;
+    letter-spacing: -0.01em;
   }
   .topbar-actions {
-    gap: .4rem;
+    gap: .2rem;
   }
   /* Ensure bell is always visible */
   .notification-bell-container {
     display: block !important;
     visibility: visible !important;
+  }
+  .bell-btn {
+    font-size: 1.2rem;
+    padding: 0.4rem;
+  }
+  .theme-toggle {
+    transform: scale(0.85);
   }
 }
 
@@ -1075,20 +1123,26 @@ tbody td {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(255, 255, 255, .15);
-  backdrop-filter: blur(6px);
+  background: rgba(255, 255, 255, .25);
+  backdrop-filter: blur(8px);
   border: none;
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   color: #fff;
-  font-size: 1rem;
+  font-size: 1.2rem;
   cursor: pointer;
-  transition: background var(--t-fast);
+  transition: all var(--t-fast);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,.15);
 }
 
 .carousel-btn:hover {
-  background: rgba(255, 255, 255, .3);
+  background: rgba(255, 255, 255, .4);
+  transform: translateY(-50%) scale(1.1);
 }
 
 .carousel-prev {
@@ -2840,6 +2894,20 @@ tbody td {
 
 .notification-item.unread {
   background: var(--clr-green-glow);
+  border-left: 3px solid var(--clr-green);
+}
+
+.notification-item.unread::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 1.2rem;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 10px;
+  background: var(--clr-blue);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--clr-blue);
 }
 
 .notification-icon-circle {
@@ -2889,7 +2957,62 @@ tbody td {
   background: none;
   border: none;
   color: var(--clr-blue);
-  font-weight: 600;
-  font-size: .85rem;
+  font-weight: 700;
+  font-size: .88rem;
   cursor: pointer;
+  transition: color var(--t-fast);
+}
+
+.notification-footer button:hover {
+  color: var(--clr-blue-dark);
+  text-decoration: underline;
+}
+
+/* ── Empty States ─────────────────────────────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  text-align: center;
+  background: var(--bg-card);
+  border-radius: var(--r-md);
+  border: 1.5px dashed var(--border);
+  gap: 1rem;
+}
+
+.empty-state-icon {
+  font-size: 3.5rem;
+  margin-bottom: .5rem;
+  filter: grayscale(0.2);
+  opacity: 0.8;
+}
+
+.empty-state-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--txt-primary);
+}
+
+.empty-state-desc {
+  font-size: .9rem;
+  color: var(--txt-muted);
+  max-width: 300px;
+}
+
+/* ── Global Image Fixes ───────────────────────────────────── */
+img {
+  max-width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
+.store-card img,
+.complaint-card img,
+.complaint-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--t-med);
 }

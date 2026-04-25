@@ -89,20 +89,22 @@ export default function NotificationBell() {
       {isOpen && (
         <div className="notification-dropdown">
           <div className="notification-header">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '.2rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
-                <h3>Notifications</h3>
-                <span className="notification-count-tag">{notifications.length} total</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '.1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '.6rem' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>Notifications</h3>
+                {unreadCount > 0 && <span className="unread-label">{unreadCount} New</span>}
               </div>
-              <small style={{ fontSize: '.6rem', opacity: 0.4 }}>Current UID: {user?._id || user?.id || 'Unknown'}</small>
+              <small style={{ fontSize: '.65rem', color: 'var(--txt-muted)', fontWeight: 500 }}>
+                Stay updated with your latest activities
+              </small>
             </div>
           </div>
           <div className="notification-list">
             {notifications.length === 0 ? (
-              <div className="no-notifications">
-                <div style={{ fontSize: '2rem', marginBottom: '1rem', opacity: 0.5 }}>📭</div>
-                <p>No notifications yet</p>
-                <small style={{ opacity: 0.6 }}>Your alerts will appear here</small>
+              <div className="empty-state" style={{ border: 'none', padding: '3rem 1rem' }}>
+                <div className="empty-state-icon">📭</div>
+                <div className="empty-state-title">No notifications yet</div>
+                <div className="empty-state-desc">Your alerts and updates will appear here when they arrive.</div>
               </div>
             ) : (
               notifications.map(n => (
@@ -115,7 +117,7 @@ export default function NotificationBell() {
             )}
           </div>
           <div className="notification-footer">
-            <button onClick={() => setIsOpen(false)}>Close Menu</button>
+            <button onClick={() => setIsOpen(false)}>Close Notifications</button>
           </div>
         </div>
       )}

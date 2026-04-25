@@ -20,8 +20,7 @@ export default function Sidebar({ portalName, icon, navItems, activeSection, onN
             SustainX
             <div className="logo-sub">{portalName}</div>
           </div>
-          {/* Close button only visible on mobile via CSS if needed, or always here for simplicity */}
-          <button className="menu-toggle" onClick={onClose} style={{ marginLeft: 'auto', fontSize: '1.2rem' }}>✕</button>
+          <button className="sidebar-close-btn" onClick={onClose} aria-label="Close menu">✕</button>
         </div>
 
         <nav className="sidebar-nav">

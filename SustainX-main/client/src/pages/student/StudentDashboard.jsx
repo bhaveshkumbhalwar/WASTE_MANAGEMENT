@@ -33,6 +33,14 @@ const NAV_ITEMS = [
   { id: 'sec-awareness', label: 'Awareness', icon: '🌱' },
 ];
 
+const AWARENESS_SLIDES = [
+  { icon: '♻️', title: 'Reduce, Reuse, Recycle', text: 'The 3Rs are the foundation of sustainable waste management.', badge: 'SDG Goal 12', bg: 'rgba(145,208,108,.15),rgba(64,150,40,.08)', cls: 'badge-done' },
+  { icon: '🌊', title: 'Plastic Pollution Crisis', text: 'Over 8 million tonnes of plastic enter our oceans each year.', badge: 'SDG Goal 14', bg: 'rgba(76,140,228,.12),rgba(64,96,147,.08)', cls: 'badge-progress' },
+  { icon: '🍎', title: 'Food Waste Matters', text: 'Approximately 1/3 of all food produced globally is wasted.', badge: 'SDG Goal 2', bg: 'rgba(255,215,80,.15),rgba(255,163,0,.08)', cls: 'badge-pending' },
+  { icon: '⚡', title: 'E-Waste Responsibility', text: 'Electronic waste contains hazardous materials like lead and mercury.', badge: 'Hazardous', bg: 'rgba(235,76,76,.1),rgba(180,40,40,.06)', cls: 'badge-red' },
+  { icon: '🏆', title: 'Earn Rewards for Clean Campus', text: 'Every complaint and dustbin alert earns you reward points.', badge: 'Campus Initiative', bg: 'rgba(145,208,108,.18),rgba(76,140,228,.1)', cls: 'badge-done' },
+];
+
 export default function StudentDashboard() {
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -134,12 +142,20 @@ export default function StudentDashboard() {
     loadOrders();
   }, [loadProfile, loadHistory, loadRewards]);
 
-  // Carousel auto-rotate
-  const slides = 5;
+  // Carousel logic
+  const slides = AWARENESS_SLIDES.length;
+  const nextSlide = useCallback(() => {
+    setCarouselIdx((i) => (i + 1) % slides);
+  }, [slides]);
+
+  const prevSlide = useCallback(() => {
+    setCarouselIdx((i) => (i - 1 + slides) % slides);
+  }, [slides]);
+
   useEffect(() => {
-    const timer = setInterval(() => setCarouselIdx((i) => (i + 1) % slides), 5000);
+    const timer = setInterval(nextSlide, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [nextSlide]);
 
   const loadStore = async () => {
     try {
@@ -320,7 +336,11 @@ export default function StudentDashboard() {
                 <div className="card">
                   <div className="section-title"><div className="section-title-bar"></div><h2>Recent Complaints</h2></div>
                   {recentComplaints.length === 0 ? (
-                    <p className="text-muted">No complaints yet.</p>
+                    <div className="empty-state" style={{ padding: '2rem 1rem', border: 'none' }}>
+                      <div className="empty-state-icon" style={{ fontSize: '2.5rem' }}>📝</div>
+                      <div className="empty-state-title" style={{ fontSize: '1rem' }}>No recent complaints</div>
+                      <div className="empty-state-desc" style={{ fontSize: '.8rem' }}>Your recently filed complaints will appear here.</div>
+                    </div>
                   ) : (
                     recentComplaints.map((c) => (
                       <div className="reward-item" key={c.complaintId}>
@@ -440,7 +460,15 @@ export default function StudentDashboard() {
                   <thead><tr><th>ID</th><th>Location</th><th>Waste Type</th><th>Date</th><th>Status</th></tr></thead>
                   <tbody>
                     {complaints.length === 0 ? (
-                      <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: 'var(--txt-muted)' }}>No complaints found.</td></tr>
+                      <tr>
+                        <td colSpan="5">
+                          <div className="empty-state" style={{ border: 'none', background: 'none' }}>
+                            <div className="empty-state-icon">📋</div>
+                            <div className="empty-state-title">No Complaints Found</div>
+                            <div className="empty-state-desc">You haven't filed any complaints yet or no matches found.</div>
+                          </div>
+                        </td>
+                      </tr>
                     ) : complaints.map((c) => (
                       <tr key={c.complaintId}>
                         <td><span onClick={() => handleViewComplaint(c.complaintId)} style={{ fontWeight: 700, color: '#4ade80', cursor: 'pointer' }}>{c.complaintId}</span></td>
@@ -579,7 +607,11 @@ export default function StudentDashboard() {
               <div className="card">
                 <div className="section-title"><div className="section-title-bar"></div><h3>Reward History</h3></div>
                 {rewards.length === 0 ? (
-                  <p className="text-muted">No rewards yet. Submit complaints to earn points!</p>
+                  <div className="empty-state">
+                    <div className="empty-state-icon">🏆</div>
+                    <div className="empty-state-title">No Rewards Yet</div>
+                    <div className="empty-state-desc">Start reporting waste issues on campus to earn reward points!</div>
+                  </div>
                 ) : rewards.map((r, i) => (
                   <div className="reward-item" key={i}>
                     <div className="reward-icon">🏆</div>
@@ -599,16 +631,10 @@ export default function StudentDashboard() {
             <section className="page-section active" id="sec-awareness">
               <div className="section-title"><div className="section-title-bar"></div><h2>🌱 Waste Awareness</h2></div>
               <div className="carousel">
-                <button className="carousel-btn carousel-prev" onClick={() => setCarouselIdx((i) => (i - 1 + slides) % slides)}>‹</button>
-                <button className="carousel-btn carousel-next" onClick={() => setCarouselIdx((i) => (i + 1) % slides)}>›</button>
+                <button className="carousel-btn carousel-prev" onClick={prevSlide} aria-label="Previous slide">‹</button>
+                <button className="carousel-btn carousel-next" onClick={nextSlide} aria-label="Next slide">›</button>
                 <div className="carousel-track" style={{ transform: `translateX(-${carouselIdx * 100}%)` }}>
-                  {[
-                    { icon: '♻️', title: 'Reduce, Reuse, Recycle', text: 'The 3Rs are the foundation of sustainable waste management.', badge: 'SDG Goal 12', bg: 'rgba(145,208,108,.15),rgba(64,150,40,.08)', cls: 'badge-done' },
-                    { icon: '🌊', title: 'Plastic Pollution Crisis', text: 'Over 8 million tonnes of plastic enter our oceans each year.', badge: 'SDG Goal 14', bg: 'rgba(76,140,228,.12),rgba(64,96,147,.08)', cls: 'badge-progress' },
-                    { icon: '🍎', title: 'Food Waste Matters', text: 'Approximately 1/3 of all food produced globally is wasted.', badge: 'SDG Goal 2', bg: 'rgba(255,215,80,.15),rgba(255,163,0,.08)', cls: 'badge-pending' },
-                    { icon: '⚡', title: 'E-Waste Responsibility', text: 'Electronic waste contains hazardous materials like lead and mercury.', badge: 'Hazardous', bg: 'rgba(235,76,76,.1),rgba(180,40,40,.06)', cls: 'badge-red' },
-                    { icon: '🏆', title: 'Earn Rewards for Clean Campus', text: 'Every complaint and dustbin alert earns you reward points.', badge: 'Campus Initiative', bg: 'rgba(145,208,108,.18),rgba(76,140,228,.1)', cls: 'badge-done' },
-                  ].map((s, i) => (
+                  {AWARENESS_SLIDES.map((s, i) => (
                     <div className="carousel-slide" key={i}>
                       <div className="awareness-slide" style={{ background: `linear-gradient(135deg,${s.bg})` }}>
                         <div className="awareness-icon">{s.icon}</div>
@@ -658,10 +684,10 @@ export default function StudentDashboard() {
               </p>
               <div className="store-grid">
                 {storeItems.length === 0 ? (
-                  <div className="card" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '2rem' }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '.7rem' }}>🏪</div>
-                    <h3>Store is empty</h3>
-                    <p className="text-muted">No items available yet. Check back soon!</p>
+                  <div className="empty-state" style={{ gridColumn: '1/-1' }}>
+                    <div className="empty-state-icon">🏪</div>
+                    <div className="empty-state-title">Store is Empty</div>
+                    <div className="empty-state-desc">No eco-friendly items are available for redemption right now.</div>
                   </div>
                 ) : storeItems.map((item) => (
                   <div className="store-card" key={item._id} onClick={() => { setSelectedProduct(item); setProductRating(0); }} style={{ cursor: 'pointer' }}>
@@ -740,10 +766,10 @@ export default function StudentDashboard() {
                     </div>
                   ))
                 ) : myOrders.length === 0 ? (
-                  <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
-                    <div style={{ fontSize: '3rem' }}>🛍️</div>
-                    <h3>No orders found</h3>
-                    <p className="text-muted">Redeem your points in the Eco Store to see your orders here!</p>
+                  <div className="empty-state">
+                    <div className="empty-state-icon">🛍️</div>
+                    <div className="empty-state-title">No Orders Found</div>
+                    <div className="empty-state-desc">Redeem your points in the Eco Store to see your orders here!</div>
                   </div>
                 ) : myOrders.map((o) => (
                   <div className="card order-tracking-card card-lift" key={o._id} style={{ marginBottom: '1.2rem', padding: '1.5rem' }}>

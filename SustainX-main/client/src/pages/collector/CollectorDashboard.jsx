@@ -429,10 +429,10 @@ export default function CollectorDashboard() {
 
               <div className="grid-3" style={{ gap: '1rem' }}>
                 {openComplaints.length === 0 ? (
-                  <div className="card" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '2rem' }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '.7rem' }}>🎉</div>
-                    <h3>All Clear!</h3>
-                    <p className="text-muted">No open complaints. Great work!</p>
+                  <div className="empty-state" style={{ gridColumn: '1/-1' }}>
+                    <div className="empty-state-icon">🎉</div>
+                    <div className="empty-state-title">All Clear!</div>
+                    <div className="empty-state-desc">No open complaints in your block. Great work keeping the campus clean!</div>
                   </div>
                 ) : openComplaints.map((c) => (
                   <div className={`complaint-card ${c.type === 'iot' ? 'complaint-card-iot' : ''}`} key={c.complaintId}>
@@ -490,7 +490,15 @@ export default function CollectorDashboard() {
                   <thead><tr><th>ID</th><th>Location</th><th>Waste Type</th><th>Date</th><th>Status</th></tr></thead>
                   <tbody>
                     {resolved.length === 0 ? (
-                      <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: 'var(--txt-muted)' }}>No resolved complaints yet.</td></tr>
+                      <tr>
+                        <td colSpan="5">
+                          <div className="empty-state" style={{ border: 'none', background: 'none' }}>
+                            <div className="empty-state-icon">⌛</div>
+                            <div className="empty-state-title">No Resolved Complaints</div>
+                            <div className="empty-state-desc">You haven't resolved any complaints yet. Completed tasks will appear here.</div>
+                          </div>
+                        </td>
+                      </tr>
                     ) : resolved.map((c) => (
                       <tr key={c.complaintId}>
                         <td><span style={{ fontWeight: 700, color: 'var(--clr-green)' }}>{c.complaintId}</span></td>
@@ -529,10 +537,12 @@ export default function CollectorDashboard() {
                   <tbody>
                     {storeOrders.length === 0 ? (
                       <tr>
-                        <td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: 'var(--txt-muted)' }}>
-                          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📦</div>
-                          <strong>No orders available for Block {user.block || 'your block'}.</strong>
-                          <p style={{ fontSize: '.85rem', marginTop: '.5rem' }}>Active redemptions from students in this block will appear here.</p>
+                        <td colSpan="7">
+                          <div className="empty-state" style={{ border: 'none', background: 'none' }}>
+                            <div className="empty-state-icon">📦</div>
+                            <div className="empty-state-title">No Orders Available</div>
+                            <div className="empty-state-desc">Active redemptions from students in Block {user.block || 'your block'} will appear here.</div>
+                          </div>
                         </td>
                       </tr>
                     ) : storeOrders.map((o) => (
@@ -597,10 +607,10 @@ export default function CollectorDashboard() {
               </p>
               <div className="store-grid">
                 {storeItems.length === 0 ? (
-                  <div className="card" style={{ gridColumn: '1/-1', textAlign: 'center', padding: '2rem' }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '.7rem' }}>🏪</div>
-                    <h3>Store is empty</h3>
-                    <p className="text-muted">No items available yet. Check back soon!</p>
+                  <div className="empty-state" style={{ gridColumn: '1/-1' }}>
+                    <div className="empty-state-icon">🏪</div>
+                    <div className="empty-state-title">Store is Empty</div>
+                    <div className="empty-state-desc">No items are available for redemption at the moment. Check back soon!</div>
                   </div>
                 ) : storeItems.map((item) => (
                   <div className="store-card" key={item._id}>
