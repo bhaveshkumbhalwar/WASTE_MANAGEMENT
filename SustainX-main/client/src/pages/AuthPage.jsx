@@ -84,7 +84,7 @@ export default function AuthPage() {
         dept: suDept, 
         password: suPass
       });
-      showToast('Account created successfully!');
+      showToast('🎉 100 Points Credited! Welcome Bonus!', 'success', 5000);
     } finally {
       setLoading(false);
     }

@@ -14,6 +14,7 @@ const statsRoutes = require('./routes/statsRoutes');
 const storeRoutes = require('./routes/storeRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const iotRoutes = require('./routes/iotRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 const app = express();
 
@@ -58,6 +59,7 @@ app.use('/api/stats', statsRoutes);
 app.use('/api/store', storeRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/iot', iotRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // ✅ Root route (Render health check)
 app.get('/', (req, res) => {

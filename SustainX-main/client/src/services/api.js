@@ -91,4 +91,8 @@ export const updateOrderStatus = (id, data) =>
 export const assignOrderApi = (id) =>
   API.post(`/orders/assign/${id}`);
 
+// ================= NOTIFICATIONS =================
+export const getNotifications = () => API.get('/notifications');
+export const markNotificationRead = (id) => API.put(`/notifications/read/${id}`);
+
 export default API;

@@ -1,5 +1,6 @@
 const Reward = require('../models/Reward');
 const User = require('../models/User');
+const { createNotification } = require('./notificationController');
 
 // @desc    Get rewards for a user
 // @route   GET /api/rewards
@@ -44,6 +45,13 @@ const addReward = async (req, res) => {
       points: Number(points),
       date: new Date(),
     });
+
+    // ✅ Notify User
+    await createNotification(
+      user._id,
+      `🏆 Reward Credited: +${points} pts for "${activity}"`,
+      'reward'
+    );
 
     res.status(201).json({ reward, updatedPoints: user.rewardPoints });
   } catch (err) {

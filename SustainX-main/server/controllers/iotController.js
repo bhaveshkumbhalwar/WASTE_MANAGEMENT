@@ -1,5 +1,6 @@
 const Complaint = require('../models/Complaint');
 const User = require('../models/User');
+const { createNotification } = require('./notificationController');
 
 // @desc    Receive IoT data from ESP32 smart dustbin
 // @route   POST /api/iot/data
@@ -83,6 +84,25 @@ const processIotData = async (req, res) => {
         }
       ]
     });
+
+    // ✅ Notify Assigned Collector
+    if (collector) {
+      await createNotification(
+        collector._id,
+        `🚨 New IoT Alert! Bin ${binLabel} in your block (${normalizedBlock}) is full!`,
+        'iot'
+      );
+    }
+
+    // ✅ Notify Admins
+    const admins = await User.find({ role: 'admin' });
+    for (const admin of admins) {
+      await createNotification(
+        admin._id,
+        `🚨 IoT Alert: Bin ${binLabel} (Block ${normalizedBlock}) reached ${level}%!`,
+        'iot'
+      );
+    }
 
     console.log(`🚨 [IOT] Auto-complaint created: ${complaintId} | Bin: ${binLabel} | Assigned to: ${collector ? collector._id : 'NONE'}`);
 

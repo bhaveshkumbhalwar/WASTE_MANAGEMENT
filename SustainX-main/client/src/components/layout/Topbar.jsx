@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import ThemeToggle from '../ui/ThemeToggle';
+import NotificationBell from './NotificationBell';
 
 export default function Topbar({ title, onToggleMenu }) {
   const [time, setTime] = useState('');
@@ -25,6 +26,7 @@ export default function Topbar({ title, onToggleMenu }) {
         <span style={{ fontSize: '.78rem', color: 'var(--txt-muted)' }}>
           🕐 {time}
         </span>
+        <NotificationBell />
         <ThemeToggle />
       </div>
     </header>

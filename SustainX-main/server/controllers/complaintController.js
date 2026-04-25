@@ -1,6 +1,7 @@
 const Complaint = require('../models/Complaint');
 const User = require('../models/User');
 const { uploadToCloudinary } = require('../middleware/upload');
+const { createNotification } = require('./notificationController');
 
 // @desc    Get all complaints (with role-based filtering)
 // @route   GET /api/complaints
@@ -105,6 +106,16 @@ const submitComplaint = async (req, res) => {
       ],
     });
 
+    // ✅ Notify Admins about new complaint
+    const admins = await User.find({ role: 'admin' });
+    for (const admin of admins) {
+      await createNotification(
+        admin._id,
+        `📋 New complaint ${complaintId} filed in Block ${block.toUpperCase()}`,
+        'complaint'
+      );
+    }
+
     res.status(201).json(complaint);
   } catch (err) {
     console.error("🔥 [SUBMIT] ERROR:", err.message);
@@ -139,6 +150,14 @@ const updateComplaintStatus = async (req, res) => {
     });
 
     await complaint.save();
+
+    // ✅ Notify Student about status update
+    await createNotification(
+      complaint.user,
+      `🔍 Complaint ${complaint.complaintId} status updated to: ${status}`,
+      'complaint'
+    );
+
     res.json(complaint);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -214,6 +233,13 @@ const completeComplaint = async (req, res) => {
     await complaint.save();
 
     console.log(`✅ [COMPLETE] ${complaint.complaintId} completed | Image: ${imageUrl}`);
+
+    // ✅ Notify Student
+    await createNotification(
+      complaint.user,
+      `✅ Great news! Your complaint ${complaint.complaintId} has been completed!`,
+      'complaint'
+    );
 
     res.json({
       message: 'Completed successfully',

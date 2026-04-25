@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
+const { createNotification } = require('./notificationController');
 
 // @desc    Get all users (admin)
 // @route   GET /api/users
@@ -62,6 +63,13 @@ const createUser = async (req, res) => {
 
     const user = await User.create(userData);
     console.log(`👤 [USERS] Created ${userData.role} | block: ${userData.block || 'N/A'} | email: ${userData.email}`);
+
+    // ✅ Notify the new user
+    await createNotification(
+      user._id,
+      `👋 Welcome to SustainX, ${user.name}! Your account as a ${user.role} has been created.`,
+      'info'
+    );
 
     res.status(201).json(user.toJSON());
   } catch (err) {

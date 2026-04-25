@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Reward = require('../models/Reward');
+const { createNotification } = require('./notificationController');
 
 // Generate JWT with id, role, and block embedded
 const generateToken = (user) => {
@@ -93,6 +94,23 @@ const register = async (req, res) => {
     });
 
     console.log(`🎁 [SIGNUP] New student ${user.email} received 100 pts signup bonus`);
+
+    // ✅ Notify Student
+    await createNotification(
+      user._id,
+      '🎉 100 Points Credited! Welcome Bonus!',
+      'reward'
+    );
+
+    // ✅ Notify Admins
+    const admins = await User.find({ role: 'admin' });
+    for (const admin of admins) {
+      await createNotification(
+        admin._id,
+        `🆕 New user registered: ${user.name} (${user.email})`,
+        'user'
+      );
+    }
 
     res.status(201).json({
       token: generateToken(user),

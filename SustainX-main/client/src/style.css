@@ -2677,3 +2677,169 @@ tbody td {
 [data-theme="dark"] .complaint-card-iot {
   background: linear-gradient(135deg, var(--bg-card), rgba(235, 76, 76, .06)) !important;
 }
+
+/* ── Notifications ────────────────────────────────────────── */
+.notification-bell-container {
+  position: relative;
+}
+
+.bell-btn {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  cursor: pointer;
+  position: relative;
+  padding: .5rem;
+  border-radius: 50%;
+  transition: background var(--t-fast);
+  color: var(--txt-primary);
+}
+
+.bell-btn:hover {
+  background: var(--bg-sidebar-item);
+}
+
+.bell-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: var(--clr-red);
+  color: white;
+  font-size: .65rem;
+  font-weight: 800;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg-card);
+  animation: bounceIn .4s cubic-bezier(.17, .67, .83, .67);
+}
+
+@keyframes bounceIn {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+
+.notification-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 320px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  animation: slideInDown .3s ease;
+  overflow: hidden;
+}
+
+@keyframes slideInDown {
+  from { transform: translateY(-10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.notification-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.notification-header h3 {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.unread-label {
+  font-size: .7rem;
+  color: var(--clr-blue);
+  font-weight: 700;
+  background: var(--clr-blue-glow);
+  padding: .2rem .5rem;
+  border-radius: 50px;
+}
+
+.notification-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.no-notifications {
+  padding: 2rem;
+  text-align: center;
+  color: var(--txt-muted);
+}
+
+.notification-item {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background var(--t-fast);
+  position: relative;
+}
+
+.notification-item:hover {
+  background: var(--bg-page);
+}
+
+.notification-item.unread {
+  background: var(--clr-green-glow);
+}
+
+.notification-icon-circle {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.notification-content {
+  flex: 1;
+}
+
+.notification-message {
+  font-size: .88rem;
+  line-height: 1.4;
+  margin-bottom: .25rem;
+  color: var(--txt-primary);
+}
+
+.notification-time {
+  font-size: .72rem;
+  color: var(--txt-muted);
+}
+
+.unread-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--clr-blue);
+  border-radius: 50%;
+  position: absolute;
+  top: 1.2rem;
+  right: 1rem;
+}
+
+.notification-footer {
+  padding: .8rem;
+  text-align: center;
+  border-top: 1px solid var(--border);
+}
+
+.notification-footer button {
+  background: none;
+  border: none;
+  color: var(--clr-blue);
+  font-weight: 600;
+  font-size: .85rem;
+  cursor: pointer;
+}
