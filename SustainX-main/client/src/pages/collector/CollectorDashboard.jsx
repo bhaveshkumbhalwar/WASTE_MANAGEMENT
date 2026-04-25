@@ -108,7 +108,15 @@ export default function CollectorDashboard() {
 
       // Only filter out completed for "All Open" tab (status filter, NOT block filter)
       const open = dashFilter ? res.data : res.data.filter((c) => c.status !== 'completed' && c.status !== 'rejected');
-      setOpenComplaints(open);
+
+      // Sort: IoT alerts first, then by date (newest first)
+      const sorted = [...open].sort((a, b) => {
+        if (a.type === 'iot' && b.type !== 'iot') return -1;
+        if (a.type !== 'iot' && b.type === 'iot') return 1;
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+
+      setOpenComplaints(sorted);
     } catch { /* ignore */ }
   }, [dashFilter]);
 
@@ -183,12 +191,12 @@ export default function CollectorDashboard() {
     }
   };
 
-  // Polling every 10 seconds
+  // Polling every 5 seconds for real-time IoT alerts
   useEffect(() => {
     const interval = setInterval(() => {
       loadStats();
       loadDashboard();
-    }, 10000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [loadStats, loadDashboard]);
 
@@ -384,10 +392,26 @@ export default function CollectorDashboard() {
                 </span>
                 <span style={{ fontSize: '.82rem', color: 'var(--txt-muted)' }}>Showing complaints for your block only</span>
               </div>
+
+              {/* IoT Alert Banner */}
+              {openComplaints.filter(c => c.type === 'iot' && c.status === 'pending').length > 0 && (
+                <div className="iot-alert-banner">
+                  <div className="iot-alert-banner-inner">
+                    <span className="iot-alert-pulse"></span>
+                    <span style={{ fontSize: '1.1rem' }}>🚨</span>
+                    <strong>IoT ALERT</strong>
+                    <span style={{ opacity: .85 }}>
+                      {openComplaints.filter(c => c.type === 'iot' && c.status === 'pending').length} smart dustbin{openComplaints.filter(c => c.type === 'iot' && c.status === 'pending').length > 1 ? 's' : ''} require immediate collection
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div className="stat-grid mb-3">
                 <StatCard icon="📋" value={stats.total} label="Block Complaints" />
                 <StatCard icon="⏳" value={stats.pending} label="Pending" />
                 <StatCard icon="🔄" value={stats.progress} label="In Progress" />
+                <StatCard icon="📡" value={openComplaints.filter(c => c.type === 'iot').length} label="IoT Alerts" color="var(--clr-red)" />
                 <StatCard icon="⭐" value={rewardTotal} label="Your Points" color="var(--clr-amber)" />
               </div>
 
@@ -411,10 +435,12 @@ export default function CollectorDashboard() {
                     <p className="text-muted">No open complaints. Great work!</p>
                   </div>
                 ) : openComplaints.map((c) => (
-                  <div className="complaint-card" key={c.complaintId}>
+                  <div className={`complaint-card ${c.type === 'iot' ? 'complaint-card-iot' : ''}`} key={c.complaintId}>
                     <div className="complaint-img">
                       {c.image ? (
                         <img src={c.image} alt="complaint" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }} />
+                      ) : c.type === 'iot' ? (
+                        '📡'
                       ) : (
                         '🗑️'
                       )}
@@ -423,12 +449,18 @@ export default function CollectorDashboard() {
                       <div className="flex-between">
                         <div className="complaint-id">{c.complaintId}</div>
                         {c.type === 'iot' && (
-                          <span className="badge badge-error" style={{ fontSize: '.7rem', padding: '.2rem .4rem', display: 'flex', alignItems: 'center', gap: '.3rem' }}>
-                            🚨 IoT ALERT
+                          <span className="iot-badge">
+                            <span className="iot-badge-dot"></span>
+                            IoT Alert
                           </span>
                         )}
                       </div>
                       <div className="complaint-location">📍 {c.location}</div>
+                      {c.type === 'iot' && c.binId && (
+                        <div style={{ fontSize: '.78rem', color: 'var(--clr-blue)', fontWeight: 600, margin: '.2rem 0' }}>
+                          🔗 Bin ID: {c.binId}
+                        </div>
+                      )}
                       <div className="complaint-desc" style={c.type === 'iot' ? { fontWeight: 700, color: 'var(--clr-red)' } : {}}>{c.description}</div>
                       <div className="flex-between" style={{ flexWrap: 'wrap', gap: '.5rem' }}>
                         <StatusBadge status={c.status} />

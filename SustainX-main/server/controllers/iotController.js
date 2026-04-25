@@ -1,84 +1,96 @@
 const Complaint = require('../models/Complaint');
 const User = require('../models/User');
 
-// @desc    Receive IoT data from ESP32
+// @desc    Receive IoT data from ESP32 smart dustbin
 // @route   POST /api/iot/data
+// @access  Public (no authentication required — ESP32 devices send data directly)
 const processIotData = async (req, res) => {
   try {
-    const { block, level } = req.body;
-    const apiKey = req.headers['x-api-key'];
+    const { block, level, binId } = req.body;
 
-    // 1. Security Check
-    if (apiKey !== process.env.IOT_SECRET) {
-      console.warn(`🔐 [IOT] Unauthorized access attempt from block: ${block}`);
-      return res.status(401).json({ message: 'Unauthorized' });
-    }
-
+    // 1. Validate required fields
     if (!block || level === undefined) {
-      return res.status(400).json({ message: 'Missing block or level' });
+      return res.status(400).json({ message: 'Missing required fields: block, level' });
     }
 
-    console.log(`📡 [IOT] Data received | Block: ${block} | Level: ${level}%`);
+    const normalizedBlock = block.toUpperCase();
+    const binLabel = binId || 'UNKNOWN';
 
-    // 2. Threshold Check
+    console.log(`📡 [IOT] Data received | Block: ${normalizedBlock} | Bin: ${binLabel} | Level: ${level}%`);
+
+    // 2. Threshold Check — only create alert if level >= 80
     if (level < 80) {
-      return res.json({ message: 'Level below threshold, no alert created' });
+      return res.json({
+        message: 'Level below threshold, no alert created',
+        level,
+        block: normalizedBlock,
+        binId: binLabel
+      });
     }
 
-    // 3. Prevent Duplicate Alerts
-    const existing = await Complaint.findOne({
-      block,
+    // 3. Prevent Duplicate Alerts (same block + same binId if provided)
+    const dupeQuery = {
+      block: normalizedBlock,
       type: 'iot',
       status: { $in: ['pending', 'in-progress', 'in_progress'] }
-    });
+    };
+    if (binId) {
+      dupeQuery.binId = binLabel;
+    }
+
+    const existing = await Complaint.findOne(dupeQuery);
 
     if (existing) {
-      console.log(`⚠️ [IOT] Active alert already exists for Block ${block} (${existing.complaintId})`);
+      console.log(`⚠️ [IOT] Active alert already exists for Block ${normalizedBlock} Bin ${binLabel} (${existing.complaintId})`);
       return res.json({ message: 'Alert already active', complaintId: existing.complaintId });
     }
 
     // 4. Find Collector for the block
     const collector = await User.findOne({
       role: 'collector',
-      block: block.toUpperCase()
+      block: normalizedBlock
     });
 
     // 4b. Find Admin to own the system complaint
     let adminUser = await User.findOne({ role: 'admin' });
     if (!adminUser) {
       // Fallback if no admin exists (should not happen in prod)
-      adminUser = await User.findOne({}); 
+      adminUser = await User.findOne({});
     }
 
     // 5. Create Auto-Complaint
     const complaintId = 'IOT-' + Date.now();
     const complaint = await Complaint.create({
       complaintId,
-      user: adminUser._id, // Required ObjectId
-      location: `Block ${block} - Smart Dustbin`,
+      user: adminUser._id, // Required ObjectId — system-owned complaint
+      location: `Block ${normalizedBlock} - Smart Dustbin ${binLabel}`,
       wasteType: 'Mixed Waste',
-      description: `AUTOMATED ALERT: Dustbin in Block ${block} is reported ${level}% FULL by sensor.`,
-      block: block.toUpperCase(),
+      description: `🚨 AUTOMATED IoT ALERT: Dustbin "${binLabel}" in Block ${normalizedBlock} is ${level}% FULL. Immediate collection required.`,
+      block: normalizedBlock,
       status: 'pending',
       type: 'iot',
+      binId: binLabel,
       assignedTo: collector ? collector._id : null,
       statusHistory: [
         {
           status: 'pending',
-          note: collector 
-            ? `IoT Alert triggered. Auto-assigned to collector (Block ${block})`
-            : 'IoT Alert triggered. No collector assigned for this block.',
+          note: collector
+            ? `IoT Alert triggered by Bin ${binLabel}. Auto-assigned to collector (Block ${normalizedBlock})`
+            : `IoT Alert triggered by Bin ${binLabel}. No collector assigned for this block.`,
           updatedBy: adminUser._id,
           timestamp: new Date()
         }
       ]
     });
 
-    console.log(`🚨 [IOT] Auto-complaint created: ${complaintId} | Assigned to: ${collector ? collector._id : 'NONE'}`);
+    console.log(`🚨 [IOT] Auto-complaint created: ${complaintId} | Bin: ${binLabel} | Assigned to: ${collector ? collector._id : 'NONE'}`);
 
     res.status(201).json({
       message: 'Complaint created successfully',
       complaintId: complaint.complaintId,
+      binId: binLabel,
+      level,
+      block: normalizedBlock,
       assignedTo: complaint.assignedTo
     });
 

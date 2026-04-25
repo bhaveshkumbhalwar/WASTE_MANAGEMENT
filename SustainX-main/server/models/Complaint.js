@@ -74,6 +74,10 @@ const complaintSchema = new mongoose.Schema(
       enum: ['complaint', 'scan', 'iot'],
       default: 'complaint',
     },
+    binId: {
+      type: String,
+      default: null,
+    },
     statusHistory: [statusHistorySchema],
     image: {
       type: String,

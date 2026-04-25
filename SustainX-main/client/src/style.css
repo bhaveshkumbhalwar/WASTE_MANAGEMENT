@@ -2585,3 +2585,95 @@ tbody td {
   border-radius: 8px;
   margin-top: 0.5rem;
 }
+
+/* ── IoT Alert System ────────────────────────────────────────── */
+
+/* IoT Alert Banner — appears at top of dashboard when active alerts exist */
+.iot-alert-banner {
+  margin-bottom: 1rem;
+  border-radius: var(--r-md);
+  background: linear-gradient(135deg, rgba(235, 76, 76, .08), rgba(255, 120, 80, .06));
+  border: 1.5px solid rgba(235, 76, 76, .25);
+  padding: .85rem 1.2rem;
+  animation: iotBannerFadeIn .5s ease;
+}
+
+.iot-alert-banner-inner {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  font-size: .88rem;
+  color: var(--clr-red);
+  font-weight: 600;
+}
+
+@keyframes iotBannerFadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Pulsing dot in the banner */
+.iot-alert-pulse {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--clr-red);
+  flex-shrink: 0;
+  animation: iotPulse 1.5s ease infinite;
+}
+
+@keyframes iotPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(235, 76, 76, .5); }
+  70%  { box-shadow: 0 0 0 8px rgba(235, 76, 76, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(235, 76, 76, 0); }
+}
+
+/* IoT Badge — replaces the old inline badge on complaint cards */
+.iot-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  background: linear-gradient(135deg, rgba(235, 76, 76, .12), rgba(255, 100, 60, .10));
+  color: var(--clr-red);
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: .25rem .6rem;
+  border-radius: 50px;
+  border: 1px solid rgba(235, 76, 76, .2);
+}
+
+.iot-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--clr-red);
+  animation: iotPulse 1.5s ease infinite;
+}
+
+/* IoT-specific complaint card highlight */
+.complaint-card-iot {
+  border-left: 3px solid var(--clr-red) !important;
+  background: linear-gradient(135deg, var(--bg-card), rgba(235, 76, 76, .03)) !important;
+}
+
+.complaint-card-iot:hover {
+  box-shadow: 0 4px 20px rgba(235, 76, 76, .12) !important;
+}
+
+/* Dark mode overrides for IoT */
+[data-theme="dark"] .iot-alert-banner {
+  background: linear-gradient(135deg, rgba(235, 76, 76, .12), rgba(255, 120, 80, .08));
+  border-color: rgba(235, 76, 76, .3);
+}
+
+[data-theme="dark"] .iot-badge {
+  background: linear-gradient(135deg, rgba(235, 76, 76, .18), rgba(255, 100, 60, .14));
+  border-color: rgba(235, 76, 76, .3);
+  color: #FF7D7D;
+}
+
+[data-theme="dark"] .complaint-card-iot {
+  background: linear-gradient(135deg, var(--bg-card), rgba(235, 76, 76, .06)) !important;
+}

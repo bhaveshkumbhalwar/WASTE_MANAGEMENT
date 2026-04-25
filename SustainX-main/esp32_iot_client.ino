@@ -5,21 +5,22 @@
   Description:
   Sends a POST request to the SustainX backend when the dustbin level
   (simulated or measured via Ultrasonic sensor) reaches >= 80%.
+  No authentication required — the endpoint is public.
 */
 
 #include <WiFi.h>
 #include <HTTPClient.h>
 
 // --- Configuration ---
-const char* ssid = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
+const char* ssid = "Kalaban Hostel Wifi";
+const char* password = "Shubh@131297";
 
-// Backend URL & API Key
-const char* serverUrl = "http://YOUR_LOCAL_IP:5000/api/iot/data";
-const char* iotSecret = "sustainx_iot_secret";
+// Backend URL (no API key needed)
+const char* serverUrl = http.begin("http://192.168.0.113:5000/api/iot/data");
 
 // Dustbin Configuration
-const char* block = "A"; // Assigned block for this ESP32
+const char* block = "A";       // Assigned block for this ESP32
+const char* binId = "BIN-A1";  // Unique ID for this specific dustbin
 
 void setup() {
   Serial.begin(115200);
@@ -46,12 +47,11 @@ void loop() {
       // Initialize HTTP request
       http.begin(serverUrl);
       
-      // Set headers
+      // Set headers (no API key required)
       http.addHeader("Content-Type", "application/json");
-      http.addHeader("x-api-key", iotSecret);
 
-      // Prepare JSON payload
-      String payload = "{\"block\":\"" + String(block) + "\", \"level\":" + String(fillLevelPercentage) + "}";
+      // Prepare JSON payload with block, level, and binId
+      String payload = "{\"block\":\"" + String(block) + "\", \"level\":" + String(fillLevelPercentage) + ", \"binId\":\"" + String(binId) + "\"}";
 
       Serial.print("Sending Alert: ");
       Serial.println(payload);
@@ -78,3 +78,4 @@ void loop() {
   // Poll every 30 seconds to prevent spamming the server
   delay(30000); 
 }
+
