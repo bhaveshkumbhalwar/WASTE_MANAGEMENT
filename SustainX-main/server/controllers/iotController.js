@@ -6,6 +6,7 @@ const User = require('../models/User');
 // @access  Public (no authentication required — ESP32 devices send data directly)
 const processIotData = async (req, res) => {
   try {
+    console.log("BODY:", req.body);
     const { block, level, binId } = req.body;
 
     // 1. Validate required fields
