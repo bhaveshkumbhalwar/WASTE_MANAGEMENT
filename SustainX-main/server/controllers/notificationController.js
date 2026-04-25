@@ -1,17 +1,32 @@
 const Notification = require('../models/Notification');
+const mongoose = require('mongoose');
 
 // @desc    Get user notifications
 // @route   GET /api/notifications
+
 const getNotifications = async (req, res) => {
   try {
-    const userId = req.user._id || req.user.id;
-    console.log(`🔍 [NOTIFICATIONS] Fetching for user: ${userId}`);
+    const rawId = req.user._id || req.user.id;
+    
+    // Ensure we have a valid ObjectId for the query
+    let userId;
+    try {
+      userId = new mongoose.Types.ObjectId(rawId.toString());
+    } catch (e) {
+      userId = rawId; // fallback
+    }
+
+    console.log('--- DEBUG NOTIFICATIONS ---');
+    console.log('Request User:', { id: req.user.id, _id: req.user._id, role: req.user.role });
+    console.log('Converted Query User ID:', userId);
     
     const notifications = await Notification.find({ user: userId })
       .sort({ createdAt: -1 })
       .limit(50);
       
-    console.log(`✅ [NOTIFICATIONS] Found ${notifications.length} notifications`);
+    console.log('Found Count:', notifications.length);
+    console.log('---------------------------');
+
     res.json(notifications);
   } catch (err) {
     console.error(`❌ [NOTIFICATIONS ERROR]: ${err.message}`);
@@ -47,8 +62,9 @@ const markAsRead = async (req, res) => {
 // @route   PUT /api/notifications/read-all
 const markAllAsRead = async (req, res) => {
   try {
+    const userId = req.user._id || req.user.id;
     await Notification.updateMany(
-      { user: req.user.id, isRead: false },
+      { user: userId, isRead: false },
       { $set: { isRead: true } }
     );
     res.json({ message: 'All notifications marked as read' });

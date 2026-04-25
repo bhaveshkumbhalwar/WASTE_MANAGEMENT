@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../../services/api';
 import NotificationItem from './NotificationItem';
 
 export default function NotificationBell() {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -12,17 +14,19 @@ export default function NotificationBell() {
   const fetchNotifications = async () => {
     try {
       const res = await getNotifications();
-      console.log(`🔔 [UI] Received ${res.data.length} notifications`);
+      // Only update if data changed to avoid unnecessary renders
       setNotifications(res.data);
+      return res.data;
     } catch (err) {
       console.error('Error fetching notifications:', err);
+      return [];
     }
   };
 
   useEffect(() => {
     fetchNotifications();
-    // Poll every 30 seconds for updates
-    const interval = setInterval(fetchNotifications, 30000);
+    // Poll every 5 seconds for immediate updates
+    const interval = setInterval(fetchNotifications, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -41,11 +45,12 @@ export default function NotificationBell() {
     setIsOpen(nextOpenState);
     
     if (nextOpenState) {
-      // Refresh list
-      await fetchNotifications();
+      // Refresh list and get fresh data
+      const freshNotifications = await fetchNotifications();
+      const freshUnreadCount = freshNotifications.filter(n => !n.isRead).length;
       
       // If there are unread, mark all as read
-      if (unreadCount > 0) {
+      if (freshUnreadCount > 0) {
         try {
           await markAllNotificationsRead();
           // Optimistically update local state
@@ -71,21 +76,33 @@ export default function NotificationBell() {
 
   return (
     <div className="notification-bell-container" ref={dropdownRef}>
-      <button className="bell-btn" onClick={handleToggle} aria-label="Notifications">
+      <button className={`bell-btn ${unreadCount > 0 ? 'has-unread' : ''}`} onClick={handleToggle} aria-label="Notifications">
         <span className="bell-icon">🔔</span>
-        {unreadCount > 0 && <span className="bell-badge">{unreadCount}</span>}
+        {unreadCount > 0 && (
+          <span className="bell-badge">
+            <span className="bell-dot"></span>
+            {unreadCount}
+          </span>
+        )}
       </button>
 
       {isOpen && (
         <div className="notification-dropdown">
           <div className="notification-header">
-            <h3>Notifications</h3>
-            {unreadCount > 0 && <span className="unread-label">{unreadCount} unread</span>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '.2rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+                <h3>Notifications</h3>
+                <span className="notification-count-tag">{notifications.length} total</span>
+              </div>
+              <small style={{ fontSize: '.6rem', opacity: 0.4 }}>Current UID: {user?._id || user?.id || 'Unknown'}</small>
+            </div>
           </div>
           <div className="notification-list">
             {notifications.length === 0 ? (
               <div className="no-notifications">
+                <div style={{ fontSize: '2rem', marginBottom: '1rem', opacity: 0.5 }}>📭</div>
                 <p>No notifications yet</p>
+                <small style={{ opacity: 0.6 }}>Your alerts will appear here</small>
               </div>
             ) : (
               notifications.map(n => (
@@ -98,7 +115,7 @@ export default function NotificationBell() {
             )}
           </div>
           <div className="notification-footer">
-            <button onClick={() => setIsOpen(false)}>Close</button>
+            <button onClick={() => setIsOpen(false)}>Close Menu</button>
           </div>
         </div>
       )}

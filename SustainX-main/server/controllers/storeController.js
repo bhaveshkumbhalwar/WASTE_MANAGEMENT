@@ -4,6 +4,7 @@ const User = require('../models/User');
 const Reward = require('../models/Reward');
 
 const OrderLog = require('../models/OrderLog');
+const { createNotification } = require('./notificationController');
 
 // ── Generate sequential order ID ──
 const generateOrderId = async () => {
@@ -154,6 +155,13 @@ const redeemItem = async (req, res) => {
 
     console.log(`🛒 [ORDER] Created: ${order.orderId} | Block: ${order.block} | User: ${user._id}`);
 
+    // ✅ Notify Student
+    await createNotification(
+      user._id,
+      `🛒 Order ${order.orderId} placed successfully! Use code ${code} for pickup.`,
+      'info'
+    );
+
     res.status(201).json({
       order,
       remainingPoints: user.rewardPoints,
@@ -299,6 +307,21 @@ const updateOrderStatus = async (req, res) => {
     }
 
     await order.save();
+
+    // ✅ Notify Student about status change
+    const statusEmoji = status === 'delivered' ? '📦' : status === 'ready_for_pickup' ? '🎁' : '👍';
+    const statusMsg = status === 'delivered' 
+      ? `📦 Your order ${order.orderId} has been delivered!` 
+      : status === 'ready_for_pickup'
+      ? `🎁 Your order ${order.orderId} is ready for pickup!`
+      : `👍 Your order ${order.orderId} status updated to: ${status}`;
+
+    await createNotification(
+      order.user,
+      statusMsg,
+      'info'
+    );
+
     res.json(order);
   } catch (err) {
     console.error("ERROR:", err);
@@ -380,6 +403,14 @@ const assignOrder = async (req, res) => {
     await order.save();
     
     console.log(`🤝 [SUCCESS] Order ${order.orderId} taken by Collector ${req.user._id}`);
+
+    // ✅ Notify Student
+    await createNotification(
+      order.user,
+      `🤝 Collector ${req.user.name} has taken your order ${order.orderId} and is preparing it.`,
+      'info'
+    );
+
     res.json(order);
   } catch (err) {
     console.error("ASSIGN ERROR:", err);

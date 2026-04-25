@@ -106,6 +106,13 @@ const submitComplaint = async (req, res) => {
       ],
     });
 
+    // ✅ Notify Student about registration
+    await createNotification(
+      req.user.id,
+      `📢 Your complaint ${complaintId} has been registered successfully!`,
+      'complaint'
+    );
+
     // ✅ Notify Admins about new complaint
     const admins = await User.find({ role: 'admin' });
     for (const admin of admins) {
