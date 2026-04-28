@@ -16,7 +16,7 @@ const char* ssid = "Kalaban Hostel Wifi";
 const char* password = "Shubh@131297";
 
 // Backend URL (no API key needed)
-const char* serverUrl = http.begin("http://192.168.0.109:5000/api/iot/data");
+const char* serverUrl = http.begin("http://192.168.0.113:5000/api/iot/data");
 
 // Dustbin Configuration
 const char* block = "A";       // Assigned block for this ESP32
