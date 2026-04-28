@@ -1,9 +1,8 @@
 const multer = require("multer");
 const cloudinary = require("../config/cloudinary");
+const streamifier = require("streamifier");
 
-// ─── Use memoryStorage for multer v2 compatibility ───
-// multer-storage-cloudinary has compatibility issues with multer v2.
-// Instead, we hold the file in memory and upload to Cloudinary inside the controller.
+// ─── Use memoryStorage (works on Render, Heroku, etc.) ───
 const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
@@ -22,8 +21,8 @@ const upload = multer({
 });
 
 /**
- * Helper: Upload a multer memoryStorage file buffer to Cloudinary.
- * Returns the secure_url string, or null on failure.
+ * Upload a multer memoryStorage file buffer to Cloudinary via streamifier.
+ * Returns the secure_url string on success.
  */
 const uploadToCloudinary = (file, folder = "sustainx") => {
   return new Promise((resolve, reject) => {
@@ -35,13 +34,15 @@ const uploadToCloudinary = (file, folder = "sustainx") => {
       { folder, allowed_formats: ["jpg", "png", "jpeg", "webp"] },
       (error, result) => {
         if (error) {
-          console.error("❌ Cloudinary Upload Stream Error:", error);
+          console.error("❌ Cloudinary upload_stream error:", error);
           return reject(error);
         }
         resolve(result.secure_url);
       }
     );
-    stream.end(file.buffer);
+
+    // Use streamifier for reliable buffer-to-stream piping on all platforms
+    streamifier.createReadStream(file.buffer).pipe(stream);
   });
 };
 
