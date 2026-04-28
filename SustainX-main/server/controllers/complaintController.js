@@ -191,15 +191,20 @@ const completeComplaint = async (req, res) => {
   try {
     const { id } = req.params;
 
-    console.log("🔥 [COMPLETE] req.file:", req.file ? {
-      fieldname: req.file.fieldname,
-      mimetype: req.file.mimetype,
-      size: req.file.size,
-      hasBuffer: !!req.file.buffer,
-      path: req.file.path || 'N/A',
-    } : 'undefined');
-
-    if (!req.file) {
+    console.log("📸 [COMPLETE] Request received for:", id);
+    
+    // Detailed file logging
+    if (req.file) {
+      console.log("📸 [COMPLETE] req.file details:", {
+        fieldname: req.file.fieldname,
+        mimetype: req.file.mimetype,
+        size: `${(req.file.size / 1024).toFixed(2)} KB`,
+        hasBuffer: !!req.file.buffer,
+        bufferLength: req.file.buffer ? req.file.buffer.length : 0,
+        path: req.file.path || 'N/A',
+      });
+    } else {
+      console.log("❌ [COMPLETE] req.file is UNDEFINED");
       return res.status(400).json({
         message: 'Image is required. Please upload a photo as proof of completion.'
       });
@@ -210,20 +215,22 @@ const completeComplaint = async (req, res) => {
     });
 
     if (!complaint) {
+      console.log("❌ [COMPLETE] Complaint not found:", id);
       return res.status(404).json({ message: 'Complaint not found' });
     }
 
     // 🔐 Security — only assigned collector can complete
     if (complaint.assignedTo && complaint.assignedTo.toString() !== req.user.id) {
+      console.log("❌ [COMPLETE] Auth failure. Assigned:", complaint.assignedTo, "User:", req.user.id);
       return res.status(403).json({
         message: 'Only the assigned collector can complete this complaint'
       });
     }
 
-    // ✅ Upload image to Cloudinary
+    // ✅ Process Image
     let imageUrl = null;
 
-    // Case 1: multer-storage-cloudinary already uploaded (backward compat)
+    // Case 1: multer-storage-cloudinary already uploaded (if someone switches storage back)
     if (req.file.path || req.file.url || req.file.secure_url) {
       imageUrl = req.file.path || req.file.url || req.file.secure_url;
       console.log("🔥 [COMPLETE] Using pre-uploaded URL:", imageUrl);
@@ -231,16 +238,33 @@ const completeComplaint = async (req, res) => {
     // Case 2: memoryStorage — upload buffer to Cloudinary
     else if (req.file.buffer) {
       console.log("🔥 [COMPLETE] Uploading buffer to Cloudinary...");
-      imageUrl = await uploadToCloudinary(req.file, 'sustainx/completions');
-      console.log("🔥 [COMPLETE] Cloudinary URL:", imageUrl);
+      
+      // Check for environment variables as they are common failure points in production
+      if (!process.env.CLOUD_NAME || !process.env.API_KEY || !process.env.API_SECRET) {
+        console.error("❌ [COMPLETE] Cloudinary environment variables are MISSING!");
+        throw new Error("Server configuration error: Cloudinary credentials missing");
+      }
+
+      try {
+        imageUrl = await uploadToCloudinary(req.file, 'sustainx/completions');
+        console.log("🔥 [COMPLETE] Cloudinary upload successful:", imageUrl);
+      } catch (uploadErr) {
+        console.error("❌ [COMPLETE] Cloudinary upload failed:", uploadErr);
+        return res.status(500).json({
+          message: 'Failed to upload completion image to cloud storage',
+          error: uploadErr.message
+        });
+      }
     }
 
     if (!imageUrl) {
+      console.error("❌ [COMPLETE] Image upload resulted in null URL");
       return res.status(500).json({
         message: 'Image upload failed — no URL was returned from Cloudinary'
       });
     }
 
+    // ✅ Update Complaint
     complaint.status = 'completed';
     complaint.completionImage = imageUrl;
 
@@ -253,26 +277,33 @@ const completeComplaint = async (req, res) => {
 
     await complaint.save();
 
-    console.log(`✅ [COMPLETE] ${complaint.complaintId} completed | Image: ${imageUrl}`);
+    console.log(`✅ [COMPLETE] ${complaint.complaintId} saved successfully`);
 
     // ✅ Notify Student
-    await createNotification(
-      complaint.user,
-      `✅ Great news! Your complaint ${complaint.complaintId} has been completed!`,
-      'complaint'
-    );
+    try {
+      await createNotification(
+        complaint.user,
+        `✅ Great news! Your complaint ${complaint.complaintId} has been completed!`,
+        'complaint'
+      );
+    } catch (notifErr) {
+      console.error("⚠️ [COMPLETE] Notification failed but complaint saved:", notifErr.message);
+      // Don't fail the whole request if notification fails
+    }
 
     res.json({
+      success: true,
       message: 'Completed successfully',
       complaintId: complaint.complaintId,
       completionImage: imageUrl
     });
 
   } catch (err) {
-    console.error("🔥 [COMPLETE] ERROR:", err.message, err.stack);
+    console.error("🔥 [COMPLETE] FATAL ERROR:", err);
     res.status(500).json({
-      message: 'Server error while completing complaint',
-      error: err.message
+      message: 'Internal server error while completing complaint',
+      error: err.message,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
   }
 };

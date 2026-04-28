@@ -27,10 +27,17 @@ const upload = multer({
  */
 const uploadToCloudinary = (file, folder = "sustainx") => {
   return new Promise((resolve, reject) => {
+    if (!file || !file.buffer) {
+      return reject(new Error("No file buffer provided for Cloudinary upload"));
+    }
+
     const stream = cloudinary.uploader.upload_stream(
       { folder, allowed_formats: ["jpg", "png", "jpeg", "webp"] },
       (error, result) => {
-        if (error) return reject(error);
+        if (error) {
+          console.error("❌ Cloudinary Upload Stream Error:", error);
+          return reject(error);
+        }
         resolve(result.secure_url);
       }
     );

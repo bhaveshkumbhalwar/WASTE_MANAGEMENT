@@ -58,8 +58,14 @@ export const submitComplaint = (data) => {
 export const updateComplaintStatus = (id, data) =>
   API.put(`/complaints/${id}/status`, data);
 
-export const completeComplaintApi = (id, data) =>
-  API.post(`/complaints/complete/${id}`, data);
+export const completeComplaintApi = (id, data) => {
+  if (data instanceof FormData) {
+    return API.post(`/complaints/complete/${id}`, data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  }
+  return API.post(`/complaints/complete/${id}`, data);
+};
 
 // ================= REWARDS =================
 export const getRewards = (params) =>
