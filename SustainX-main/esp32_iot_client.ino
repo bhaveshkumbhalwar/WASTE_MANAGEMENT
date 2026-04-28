@@ -16,7 +16,7 @@ const char* ssid = "Hmm";
 const char* password = "password";
 
 // Backend URL (no API key needed)
-const char* serverUrl = "http://192.168.0.111:5000/api/iot/data";
+const char* serverUrl = "http://172.22.254.141:5000/api/iot/data";
 
 // Dustbin Configuration
 const char* block = "A";       // Assigned block for this ESP32
