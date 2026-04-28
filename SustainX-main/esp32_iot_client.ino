@@ -12,8 +12,8 @@
 #include <HTTPClient.h>
 
 // --- Configuration ---
-const char* ssid = "Kalaban Hostel Wifi";
-const char* password = "Shubh@131297";
+const char* ssid = "Hmm";
+const char* password = "password";
 
 // Backend URL (no API key needed)
 const char* serverUrl = "http://192.168.0.111:5000/api/iot/data";
