@@ -22,10 +22,12 @@ import {
   assignOrderApi,
   updateUser,
   completeComplaintApi,
+  getIotBinData,
 } from '../../services/api';
 
 const NAV_ITEMS = [
   { id: 'sec-dashboard', label: 'Dashboard', icon: '📊' },
+  { id: 'sec-iot', label: 'IoT Bins', icon: '📡' },
   { id: 'sec-store-orders', label: 'Manage Orders', icon: '📦' },
   { id: 'sec-history', label: 'History', icon: '✅' },
   { id: 'sec-store', label: 'Eco Store', icon: '🛒' },
@@ -86,6 +88,9 @@ export default function CollectorDashboard() {
   const [verificationCode, setVerificationCode] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
   const [orderCache, setOrderCache] = useState({});
+
+  // IoT Bins
+  const [binData, setBinData] = useState([]);
 
   const loadStats = useCallback(async () => {
     try {
@@ -166,6 +171,14 @@ export default function CollectorDashboard() {
     } catch { /* ignore */ }
   }, [orderFilter]);
 
+  const loadBinData = useCallback(async () => {
+    try {
+      const res = await getIotBinData();
+      setBinData(res.data);
+      console.log(`📡 [IOT UI] Fetched ${res.data.length} bin(s)`);
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     loadStats();
     loadDashboard();
@@ -175,7 +188,8 @@ export default function CollectorDashboard() {
     loadStoreItems();
     loadMyOrders();
     loadRewardHistory();
-  }, [loadStats, loadDashboard, loadHistory, loadProfile, loadStoreOrders, loadStoreItems, loadMyOrders, loadRewardHistory]);
+    loadBinData();
+  }, [loadStats, loadDashboard, loadHistory, loadProfile, loadStoreOrders, loadStoreItems, loadMyOrders, loadRewardHistory, loadBinData]);
 
   const handleRedeem = async (itemId) => {
     try {
@@ -196,6 +210,7 @@ export default function CollectorDashboard() {
     const interval = setInterval(() => {
       loadStats();
       loadDashboard();
+      loadBinData();
     }, 5000);
     return () => clearInterval(interval);
   }, [loadStats, loadDashboard]);
@@ -475,6 +490,97 @@ export default function CollectorDashboard() {
                   </div>
                 ))}
               </div>
+            </section>
+          )}
+
+          {/* ── IOT BINS ── */}
+          {section === 'sec-iot' && (
+            <section className="page-section active">
+              <div className="section-title"><div className="section-title-bar"></div><h2>📡 Smart Dustbin Status</h2></div>
+              <p style={{ marginBottom: '1.2rem', color: 'var(--txt-muted)', fontSize: '.9rem' }}>
+                Live sensor readings from IoT-enabled smart dustbins. Auto-refreshes every 5 seconds.
+              </p>
+
+              <div className="stat-grid mb-3">
+                <StatCard icon="📡" value={binData.length} label="Total Bins" />
+                <StatCard icon="🚨" value={binData.filter(b => b.level >= 80).length} label="Needs Collection" color="var(--clr-red)" />
+                <StatCard icon="✅" value={binData.filter(b => b.level < 80).length} label="Normal" color="var(--clr-green)" />
+              </div>
+
+              {binData.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-state-icon">📡</div>
+                  <div className="empty-state-title">No Bin Data Yet</div>
+                  <div className="empty-state-desc">Waiting for smart dustbins to send sensor data. Ensure ESP32 devices are connected and configured.</div>
+                </div>
+              ) : (
+                <div className="grid-3" style={{ gap: '1rem' }}>
+                  {binData.map((bin) => {
+                    const isAlert = bin.level >= 80;
+                    const barColor = bin.level >= 90 ? 'var(--clr-red)' : bin.level >= 80 ? '#ff9800' : bin.level >= 50 ? 'var(--clr-amber)' : 'var(--clr-green)';
+                    return (
+                      <div
+                        className={`card card-lift ${isAlert ? 'complaint-card-iot' : ''}`}
+                        key={bin.binId}
+                        style={{ borderTop: `3px solid ${barColor}`, padding: '1.2rem' }}
+                      >
+                        <div className="flex-between" style={{ marginBottom: '.8rem' }}>
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--clr-navy)' }}>🗑️ {bin.binId}</div>
+                            <div style={{ fontSize: '.78rem', color: 'var(--txt-muted)' }}>🏢 Block {bin.block}</div>
+                          </div>
+                          {isAlert && (
+                            <span className="iot-badge">
+                              <span className="iot-badge-dot"></span>
+                              🚨 Collector Needed
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Fill Level Bar */}
+                        <div style={{ marginBottom: '.6rem' }}>
+                          <div className="flex-between" style={{ marginBottom: '.3rem' }}>
+                            <span style={{ fontSize: '.75rem', fontWeight: 600, color: 'var(--txt-muted)' }}>Fill Level</span>
+                            <span style={{ fontSize: '.85rem', fontWeight: 800, color: barColor }}>{bin.level}%</span>
+                          </div>
+                          <div style={{ width: '100%', height: '10px', borderRadius: '5px', background: 'rgba(0,0,0,.08)', overflow: 'hidden' }}>
+                            <div style={{
+                              width: `${bin.level}%`,
+                              height: '100%',
+                              borderRadius: '5px',
+                              background: barColor,
+                              transition: 'width 0.5s ease',
+                            }} />
+                          </div>
+                        </div>
+
+                        {/* Last Updated */}
+                        {bin.lastUpdated && (
+                          <div style={{ fontSize: '.72rem', color: 'var(--txt-muted)', textAlign: 'right' }}>
+                            🕒 {fmtDate(bin.lastUpdated)}
+                          </div>
+                        )}
+
+                        {isAlert && (
+                          <div style={{
+                            marginTop: '.7rem',
+                            padding: '.5rem .8rem',
+                            borderRadius: '8px',
+                            background: 'rgba(235,76,76,.08)',
+                            border: '1px solid rgba(235,76,76,.2)',
+                            fontSize: '.8rem',
+                            fontWeight: 700,
+                            color: 'var(--clr-red)',
+                            textAlign: 'center',
+                          }}>
+                            ⚠️ IMMEDIATE COLLECTION REQUIRED
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </section>
           )}
 

@@ -1,4 +1,5 @@
 const Complaint = require('../models/Complaint');
+const BinData = require('../models/BinData');
 const User = require('../models/User');
 const { createNotification } = require('./notificationController');
 
@@ -7,7 +8,7 @@ const { createNotification } = require('./notificationController');
 // @access  Public (no authentication required — ESP32 devices send data directly)
 const processIotData = async (req, res) => {
   try {
-    console.log("BODY:", req.body);
+    console.log("📡 [IOT] BODY:", req.body);
     const { block, level, binId } = req.body;
 
     // 1. Validate required fields
@@ -17,20 +18,29 @@ const processIotData = async (req, res) => {
 
     const normalizedBlock = block.toUpperCase();
     const binLabel = binId || 'UNKNOWN';
+    const numericLevel = Number(level);
 
-    console.log(`📡 [IOT] Data received | Block: ${normalizedBlock} | Bin: ${binLabel} | Level: ${level}%`);
+    console.log(`📡 [IOT] Data received | Block: ${normalizedBlock} | Bin: ${binLabel} | Level: ${numericLevel}%`);
 
-    // 2. Threshold Check — only create alert if level >= 80
-    if (level < 80) {
+    // 2. Always save raw sensor reading to BinData
+    await BinData.create({
+      binId: binLabel,
+      block: normalizedBlock,
+      level: numericLevel,
+    });
+    console.log(`💾 [IOT] Sensor reading saved: ${binLabel} → ${numericLevel}%`);
+
+    // 3. Threshold Check — only create alert if level >= 80
+    if (numericLevel < 80) {
       return res.json({
         message: 'Level below threshold, no alert created',
-        level,
+        level: numericLevel,
         block: normalizedBlock,
         binId: binLabel
       });
     }
 
-    // 3. Prevent Duplicate Alerts (same block + same binId if provided)
+    // 4. Prevent Duplicate Alerts (same block + same binId if provided)
     const dupeQuery = {
       block: normalizedBlock,
       type: 'iot',
@@ -47,27 +57,27 @@ const processIotData = async (req, res) => {
       return res.json({ message: 'Alert already active', complaintId: existing.complaintId });
     }
 
-    // 4. Find Collector for the block
+    // 5. Find Collector for the block
     const collector = await User.findOne({
       role: 'collector',
       block: normalizedBlock
     });
 
-    // 4b. Find Admin to own the system complaint
+    // 5b. Find Admin to own the system complaint
     let adminUser = await User.findOne({ role: 'admin' });
     if (!adminUser) {
       // Fallback if no admin exists (should not happen in prod)
       adminUser = await User.findOne({});
     }
 
-    // 5. Create Auto-Complaint
+    // 6. Create Auto-Complaint
     const complaintId = 'IOT-' + Date.now();
     const complaint = await Complaint.create({
       complaintId,
       user: adminUser._id, // Required ObjectId — system-owned complaint
       location: `Block ${normalizedBlock} - Smart Dustbin ${binLabel}`,
       wasteType: 'Mixed Waste',
-      description: `🚨 AUTOMATED IoT ALERT: Dustbin "${binLabel}" in Block ${normalizedBlock} is ${level}% FULL. Immediate collection required.`,
+      description: `🚨 AUTOMATED IoT ALERT: Dustbin "${binLabel}" in Block ${normalizedBlock} is ${numericLevel}% FULL. Immediate collection required.`,
       block: normalizedBlock,
       status: 'pending',
       type: 'iot',
@@ -99,7 +109,7 @@ const processIotData = async (req, res) => {
     for (const admin of admins) {
       await createNotification(
         admin._id,
-        `🚨 IoT Alert: Bin ${binLabel} (Block ${normalizedBlock}) reached ${level}%!`,
+        `🚨 IoT Alert: Bin ${binLabel} (Block ${normalizedBlock}) reached ${numericLevel}%!`,
         'iot'
       );
     }
@@ -110,7 +120,7 @@ const processIotData = async (req, res) => {
       message: 'Complaint created successfully',
       complaintId: complaint.complaintId,
       binId: binLabel,
-      level,
+      level: numericLevel,
       block: normalizedBlock,
       assignedTo: complaint.assignedTo
     });
@@ -121,4 +131,32 @@ const processIotData = async (req, res) => {
   }
 };
 
-module.exports = { processIotData };
+// @desc    Get latest bin data (most recent reading per bin)
+// @route   GET /api/iot/data
+// @access  Public
+const getIotData = async (req, res) => {
+  try {
+    // Get the latest reading for each unique binId using aggregation
+    const latestBins = await BinData.aggregate([
+      { $sort: { createdAt: -1 } },
+      {
+        $group: {
+          _id: '$binId',
+          binId: { $first: '$binId' },
+          block: { $first: '$block' },
+          level: { $first: '$level' },
+          lastUpdated: { $first: '$createdAt' },
+        }
+      },
+      { $sort: { block: 1, binId: 1 } }
+    ]);
+
+    console.log(`📡 [IOT] GET /data → returning ${latestBins.length} bin(s)`);
+    res.json(latestBins);
+  } catch (err) {
+    console.error('❌ [IOT] GET Error:', err.message);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+module.exports = { processIotData, getIotData };

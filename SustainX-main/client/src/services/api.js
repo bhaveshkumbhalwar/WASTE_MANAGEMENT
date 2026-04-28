@@ -100,4 +100,7 @@ export const getNotifications = () => API.get('/notifications');
 export const markNotificationRead = (id) => API.put(`/notifications/read/${id}`);
 export const markAllNotificationsRead = () => API.put('/notifications/read-all');
 
+// ================= IOT =================
+export const getIotBinData = () => API.get('/iot/data');
+
 export default API;
