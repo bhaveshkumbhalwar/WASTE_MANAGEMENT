@@ -67,7 +67,7 @@ const getComplaintById = async (req, res) => {
 // @route   POST /api/complaints
 const submitComplaint = async (req, res) => {
   try {
-    const { location, wasteType, description, block } = req.body;
+    const { location, wasteType, description, block, type } = req.body;
 
     if (!location || !wasteType || !description || !block) {
       return res.status(400).json({ message: 'Please fill all required fields' });
@@ -94,6 +94,7 @@ const submitComplaint = async (req, res) => {
       description,
       block: block.toUpperCase(),
       image: imageUrl,
+      type: type || 'complaint',
       status: 'pending',
       statusHistory: [
         {

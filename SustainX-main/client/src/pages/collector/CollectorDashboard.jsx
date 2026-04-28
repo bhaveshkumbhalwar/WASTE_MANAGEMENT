@@ -438,7 +438,7 @@ export default function CollectorDashboard() {
                   <div className={`complaint-card ${c.type === 'iot' ? 'complaint-card-iot' : ''}`} key={c.complaintId}>
                     <div className="complaint-img">
                       {c.image ? (
-                        <img src={c.image} alt="complaint" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }} />
+                        <img src={c.image} alt="complaint" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }} onError={(e) => { e.target.parentElement.innerHTML = '🗑️'; }} />
                       ) : c.type === 'iot' ? (
                         '📡'
                       ) : (
@@ -487,11 +487,11 @@ export default function CollectorDashboard() {
               </div>
               <div className="table-wrap">
                 <table>
-                  <thead><tr><th>ID</th><th>Location</th><th>Waste Type</th><th>Date</th><th>Status</th></tr></thead>
+                  <thead><tr><th>ID</th><th>Photo</th><th>Location</th><th>Waste Type</th><th>Date</th><th>Status</th></tr></thead>
                   <tbody>
                     {resolved.length === 0 ? (
                       <tr>
-                        <td colSpan="5">
+                        <td colSpan="6">
                           <div className="empty-state" style={{ border: 'none', background: 'none' }}>
                             <div className="empty-state-icon">⌛</div>
                             <div className="empty-state-title">No Resolved Complaints</div>
@@ -502,6 +502,15 @@ export default function CollectorDashboard() {
                     ) : resolved.map((c) => (
                       <tr key={c.complaintId}>
                         <td><span style={{ fontWeight: 700, color: 'var(--clr-green)' }}>{c.complaintId}</span></td>
+                        <td>
+                          {c.completionImage ? (
+                            <img src={c.completionImage} alt="" style={{ width: 44, height: 44, borderRadius: '6px', objectFit: 'cover', border: '2px solid var(--clr-green)' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                          ) : c.image ? (
+                            <img src={c.image} alt="" style={{ width: 44, height: 44, borderRadius: '6px', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                          ) : (
+                            <span style={{ fontSize: '.75rem', color: 'var(--txt-muted)' }}>—</span>
+                          )}
+                        </td>
                         <td>{c.location}</td>
                         <td>{c.wasteType}</td>
                         <td>{fmtDate(c.createdAt)}</td>
@@ -780,11 +789,12 @@ export default function CollectorDashboard() {
               <div style={{ flex: 1 }}>
                 <div className="info-label" style={{ marginBottom: '.4rem' }}>📸 Initial Photo</div>
                 {selectedComplaint.image ? (
-                  <img
-                    src={selectedComplaint.image}
-                    alt="Initial"
-                    style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border)' }}
-                  />
+                    <img
+                      src={selectedComplaint.image}
+                      alt="Initial"
+                      style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border)' }}
+                      onError={(e) => { e.target.parentElement.style.display = 'none'; }}
+                    />
                 ) : (
                   <div style={{ height: '120px', borderRadius: '8px', background: 'rgba(0,0,0,.04)', display: 'grid', placeItems: 'center', color: 'var(--txt-muted)', fontSize: '.8rem' }}>No image</div>
                 )}
@@ -793,9 +803,10 @@ export default function CollectorDashboard() {
                 <div style={{ flex: 1 }}>
                   <div className="info-label" style={{ marginBottom: '.4rem', color: 'var(--clr-green)' }}>✅ Completion Proof</div>
                   <img
-                    src={`${selectedComplaint.completionImage}`}
+                    src={selectedComplaint.completionImage}
                     alt="Completion"
                     style={{ width: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: '8px', border: '2px solid var(--clr-green)' }}
+                    onError={(e) => { e.target.parentElement.style.display = 'none'; }}
                   />
                 </div>
               )}

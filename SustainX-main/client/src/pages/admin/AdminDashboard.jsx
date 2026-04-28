@@ -358,13 +358,22 @@ export default function AdminDashboard() {
                 <div className="section-title"><div className="section-title-bar"></div><h2>All Complaints</h2></div>
                 <div className="table-wrap">
                   <table>
-                    <thead><tr><th>ID</th><th>Student</th><th>Location</th><th>Block</th><th>Assigned To</th><th>Date</th><th>Status</th></tr></thead>
+                    <thead><tr><th>ID</th><th>Photo</th><th>Student</th><th>Location</th><th>Block</th><th>Assigned To</th><th>Date</th><th>Status</th></tr></thead>
                     <tbody>
                       {allComplaints.length === 0 ? (
-                        <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--txt-muted)' }}>No complaints yet.</td></tr>
+                        <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--txt-muted)' }}>No complaints yet.</td></tr>
                       ) : allComplaints.map((c) => (
                         <tr key={c.complaintId}>
                           <td><strong style={{ color: 'var(--clr-blue)' }}>{c.complaintId}</strong></td>
+                          <td>
+                            {c.image ? (
+                              <img src={c.image} alt="" style={{ width: 40, height: 40, borderRadius: '6px', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                            ) : c.completionImage ? (
+                              <img src={c.completionImage} alt="" style={{ width: 40, height: 40, borderRadius: '6px', objectFit: 'cover', border: '1px solid var(--clr-green)' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                            ) : (
+                              <span style={{ fontSize: '.75rem', color: 'var(--txt-muted)' }}>—</span>
+                            )}
+                          </td>
                           <td>{c.user?.name || '—'}</td>
                           <td>{c.location}</td>
                           <td><span className="badge badge-progress">🏢 {c.block || '—'}</span></td>

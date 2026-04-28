@@ -344,7 +344,11 @@ export default function StudentDashboard() {
                   ) : (
                     recentComplaints.map((c) => (
                       <div className="reward-item" key={c.complaintId}>
-                        <div className="reward-icon">📋</div>
+                        {c.image ? (
+                          <img src={c.image} alt="" style={{ width: 40, height: 40, borderRadius: '8px', objectFit: 'cover', flexShrink: 0 }} onError={(e) => { e.target.style.display = 'none'; }} />
+                        ) : (
+                          <div className="reward-icon">📋</div>
+                        )}
                         <div>
                           <div style={{ fontSize: '.87rem', fontWeight: 600 }}>{c.complaintId}</div>
                           <div className="text-muted" style={{ fontSize: '.78rem' }}>{c.location}</div>
@@ -457,11 +461,11 @@ export default function StudentDashboard() {
               </div>
               <div className="table-wrap">
                 <table>
-                  <thead><tr><th>ID</th><th>Location</th><th>Waste Type</th><th>Date</th><th>Status</th></tr></thead>
+                  <thead><tr><th>ID</th><th>Photo</th><th>Location</th><th>Waste Type</th><th>Date</th><th>Status</th></tr></thead>
                   <tbody>
                     {complaints.length === 0 ? (
                       <tr>
-                        <td colSpan="5">
+                        <td colSpan="6">
                           <div className="empty-state" style={{ border: 'none', background: 'none' }}>
                             <div className="empty-state-icon">📋</div>
                             <div className="empty-state-title">No Complaints Found</div>
@@ -472,6 +476,13 @@ export default function StudentDashboard() {
                     ) : complaints.map((c) => (
                       <tr key={c.complaintId}>
                         <td><span onClick={() => handleViewComplaint(c.complaintId)} style={{ fontWeight: 700, color: '#4ade80', cursor: 'pointer' }}>{c.complaintId}</span></td>
+                        <td>
+                          {c.image ? (
+                            <img src={c.image} alt="" style={{ width: 44, height: 44, borderRadius: '6px', objectFit: 'cover', cursor: 'pointer' }} onClick={() => handleViewComplaint(c.complaintId)} onError={(e) => { e.target.style.display = 'none'; }} />
+                          ) : (
+                            <span style={{ fontSize: '.75rem', color: 'var(--txt-muted)' }}>—</span>
+                          )}
+                        </td>
                         <td>{c.location}</td>
                         <td>{c.wasteType}</td>
                         <td>{fmtDate(c.createdAt)}</td>
@@ -505,6 +516,21 @@ export default function StudentDashboard() {
                     <strong>Date:</strong> {fmtDate(trackResult.createdAt)}
                   </p>
 
+                  {/* Initial Complaint Image */}
+                  {trackResult.image && (
+                    <div style={{ marginBottom: '1.2rem', padding: '.8rem', borderRadius: '12px', background: 'rgba(76,140,228,.06)', border: '1px solid rgba(76,140,228,.15)' }}>
+                      <div style={{ fontSize: '.75rem', fontWeight: 700, color: 'var(--clr-blue)', textTransform: 'uppercase', marginBottom: '.5rem', display: 'flex', alignItems: 'center', gap: '.3rem' }}>
+                        <span>📸 Submitted Photo</span>
+                      </div>
+                      <img
+                        src={trackResult.image}
+                        alt="Complaint"
+                        style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--border)' }}
+                        onError={(e) => { e.target.parentElement.style.display = 'none'; }}
+                      />
+                    </div>
+                  )}
+
                   {/* Rejection Reason Alert */}
                   {trackResult.status === 'rejected' && (
                     <div style={{ padding: '.8rem 1rem', borderRadius: '8px', background: 'rgba(235,76,76,.08)', border: '1px solid rgba(235,76,76,.2)', marginBottom: '1.5rem' }}>
@@ -523,6 +549,7 @@ export default function StudentDashboard() {
                           src={trackResult.completionImage}
                           alt="Proof"
                           style={{ width: '100%', borderRadius: '8px', border: '1px solid var(--border)' }}
+                          onError={(e) => { e.target.parentElement.style.display = 'none'; }}
                         />
                       </div>
                     )}
@@ -1018,13 +1045,13 @@ export default function StudentDashboard() {
                 {selectedDetail.image && (
                   <div>
                     <div className="form-label" style={{ fontSize: '0.7rem', color: 'var(--txt-muted)', marginBottom: '0.4rem' }}>Initial Photo</div>
-                    <img src={selectedDetail.image} alt="Complaint" style={{ width: '100%', borderRadius: '12px', border: '1px solid var(--border)', objectFit: 'cover', height: '180px' }} />
+                    <img src={selectedDetail.image} alt="Complaint" style={{ width: '100%', borderRadius: '12px', border: '1px solid var(--border)', objectFit: 'cover', height: '180px' }} onError={(e) => { e.target.parentElement.style.display = 'none'; }} />
                   </div>
                 )}
                 {selectedDetail.completionImage && (
                   <div>
                     <div className="form-label" style={{ fontSize: '0.7rem', color: 'var(--txt-muted)', marginBottom: '0.4rem' }}>Completion Proof</div>
-                    <img src={selectedDetail.completionImage} alt="Completed" style={{ width: '100%', borderRadius: '12px', border: '2px solid var(--clr-green)', objectFit: 'cover', height: '180px' }} />
+                    <img src={selectedDetail.completionImage} alt="Completed" style={{ width: '100%', borderRadius: '12px', border: '2px solid var(--clr-green)', objectFit: 'cover', height: '180px' }} onError={(e) => { e.target.parentElement.style.display = 'none'; }} />
                   </div>
                 )}
               </div>
