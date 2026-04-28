@@ -71,9 +71,21 @@ app.get('/api', (req, res) => {
   res.send('🚀 SustainX API is running successfully...');
 });
 
-// ✅ Health check
+// ✅ Health check (includes Cloudinary config status for debugging)
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+  const cloudinary = require('./config/cloudinary');
+  const cfg = cloudinary.config();
+  res.json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    cloudinary: {
+      configured: !!(cfg.cloud_name && cfg.api_key && cfg.api_secret),
+      cloud_name: cfg.cloud_name || 'MISSING',
+      api_key: cfg.api_key ? '***' + cfg.api_key.slice(-4) : 'MISSING',
+      api_secret: cfg.api_secret ? '***' + cfg.api_secret.slice(-4) : 'MISSING',
+    },
+    multer: require('multer/package.json').version,
+  });
 });
 
 // ✅ Global error handler
