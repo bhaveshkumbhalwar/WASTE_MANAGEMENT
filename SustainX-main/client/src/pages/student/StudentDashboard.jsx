@@ -490,7 +490,7 @@ export default function StudentDashboard() {
               <div className="section-title"><div className="section-title-bar"></div><h2>🔍 Track Complaint</h2></div>
               <div className="card" style={{ maxWidth: 500, marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', gap: '.7rem' }}>
-                  <input className="form-input" placeholder="Enter Complaint ID (e.g. WMS-0001)" value={trackInput} onChange={(e) => setTrackInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleTrack()} />
+                  <input className="form-input" placeholder="Enter Complaint ID (e.g. COMP-1777133531013)" value={trackInput} onChange={(e) => setTrackInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleTrack()} />
                   <button className="btn btn-blue" onClick={handleTrack}>Search</button>
                 </div>
               </div>

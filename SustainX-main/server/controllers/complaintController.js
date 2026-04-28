@@ -43,8 +43,12 @@ const getComplaintById = async (req, res) => {
       return res.status(404).json({ message: 'Complaint not found' });
     }
 
-    // Security check
-    if (req.user.role === 'student' && complaint.user.toString() !== req.user.id) {
+    // Security check — extract the raw userId whether populated or not
+    const complaintUserId = complaint.user?._id
+      ? complaint.user._id.toString()
+      : complaint.user?.toString();
+
+    if (req.user.role === 'student' && complaintUserId !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized' });
     }
     if (req.user.role === 'collector' && complaint.block !== req.user.block) {
@@ -53,9 +57,11 @@ const getComplaintById = async (req, res) => {
 
     res.json(complaint);
   } catch (err) {
+    console.error("❌ [GET COMPLAINT]:", err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
 
 // @desc    Submit a new complaint
 // @route   POST /api/complaints
