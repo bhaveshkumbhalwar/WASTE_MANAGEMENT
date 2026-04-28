@@ -48,9 +48,8 @@ export const getComplaintById = (id) =>
 
 export const submitComplaint = (data) => {
   if (data instanceof FormData) {
-    return API.post('/complaints', data, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    // Do NOT set Content-Type manually — axios auto-sets it with the correct multipart boundary
+    return API.post('/complaints', data);
   }
   return API.post('/complaints', data);
 };
@@ -60,9 +59,8 @@ export const updateComplaintStatus = (id, data) =>
 
 export const completeComplaintApi = (id, data) => {
   if (data instanceof FormData) {
-    return API.post(`/complaints/complete/${id}`, data, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    // Do NOT set Content-Type manually — axios auto-sets it with the correct multipart boundary
+    return API.post(`/complaints/complete/${id}`, data);
   }
   return API.post(`/complaints/complete/${id}`, data);
 };

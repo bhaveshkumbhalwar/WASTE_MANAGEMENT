@@ -75,9 +75,12 @@ const submitComplaint = async (req, res) => {
 
     // Handle image upload
     let imageUrl = null;
+    console.log(`📸 [SUBMIT] req.file present: ${!!req.file}`, req.file ? { fieldname: req.file.fieldname, mimetype: req.file.mimetype, size: req.file.size, hasBuffer: !!req.file.buffer } : 'NO FILE');
+
     if (req.file) {
       try {
         imageUrl = await uploadToCloudinary(req.file, 'sustainx/complaints');
+        console.log(`✅ [SUBMIT] Cloudinary URL: ${imageUrl}`);
       } catch (uploadErr) {
         console.error("❌ [SUBMIT] Cloudinary upload failed:", uploadErr.message);
         // Continue without image rather than failing the whole complaint
@@ -105,6 +108,8 @@ const submitComplaint = async (req, res) => {
         },
       ],
     });
+
+    console.log(`✅ [SUBMIT] Saved ${complaintId} | image=${complaint.image}`);
 
     // ✅ Notify Student about registration
     await createNotification(
