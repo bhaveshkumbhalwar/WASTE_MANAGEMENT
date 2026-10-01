@@ -13,7 +13,7 @@ SustainX is an IoT + MERN stack based system that monitors garbage levels in rea
 
 ---
 
-## 🛠 Tech Stack 
+## 🛠 Tech Stack   
 - Frontend: React.js
 - Backend: Node.js, Express.js
 - Database: MongoDB
